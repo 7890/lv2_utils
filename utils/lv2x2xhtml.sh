@@ -28,7 +28,9 @@ mkdir -p "$outputdir"
 filename=`echo "$1" | sed 's/://g' | sed 's/\//_/g' | sed 's/#/_/g'`
 
 lv2xinfo "$1" | xmlstarlet fo - > "$outputdir"/"$filename".xml
-lv2xinfo "$1" | xmlstarlet tr "$stylesheet" - > "$outputdir"/"$filename".xhtml
+#lv2xinfo "$1" | xmlstarlet tr "$stylesheet" - > "$outputdir"/"$filename".xhtml
+cat "$outputdir"/"$filename".xml | xmlstarlet tr "$stylesheet" - > "$outputdir"/"$filename".xhtml
+
 
 ls -1  "$outputdir"/"$filename".xhtml
 

@@ -1,5 +1,10 @@
 <?xml version="1.0"?>
-<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/1999/xhtml" version="1.0">
+<xsl:stylesheet 
+xmlns:xsl="http://www.w3.org/1999/XSL/Transform" 
+xmlns:xlink="http://www.w3.org/1999/xlink" 
+xmlns:svg="http://www.w3.org/2000/svg" 
+xmlns="http://www.w3.org/1999/xhtml" 
+version="1.0">
   <xsl:output method="xml" doctype-system="about:legacy-compat" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
   <!--
 //tb/131028
@@ -34,6 +39,8 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 
   <xsl:variable name="plugin_jalv_gtk_image" select=" concat($screenshots_uri,'/scrot_', translate(  translate(   translate(lv2plugin/meta/uri,':',''),   '/','_'  ),  '#','_' ), '.png' )"/>
 
+  <xsl:variable name="plugin_uri" select="//lv2plugin/meta/uri"/>
+
   <xsl:template match="//lv2plugin">
     <html xmlns="http://www.w3.org/1999/xhtml">
 
@@ -48,8 +55,7 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
           <xsl:value-of select="concat(meta/name,' (',meta/class,')')"/>
         </h1>
         <p>By <xsl:value-of select="meta/author/name"/><br/>
-		<xsl:variable name="plugin_uri" select="meta/uri"/>
-		<a href="{$plugin_uri}"><xsl:value-of select="meta/uri"/></a>
+		<a href="{$plugin_uri}"><xsl:value-of select="$plugin_uri"/></a>
 	</p>
 
         <div style="float:left;margin-top:20px">
@@ -61,6 +67,15 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
         <div style="float:left;margin-top:20px">
           <img src="{$plugin_jalv_gtk_image}" alt="jalv.gtk Screenshot"/>
         </div>
+
+        <div style="clear:left"/>
+	<div style="float:left;margin-top:20px">
+	  <xsl:for-each select="document('../manual_doc/doc.xml')//doc[@uri=$plugin_uri]/p">
+		<xsl:element name="p">
+			<xsl:value-of select="."/>
+		</xsl:element>
+	  </xsl:for-each>
+	</div>
 
         <div style="clear:left"/>
         <xsl:apply-templates select="port[@direction=1 and @type=1]"/>
