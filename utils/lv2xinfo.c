@@ -170,6 +170,9 @@ print_plugin(LilvWorld*        world,
 {
 	LilvNode* val = NULL;
 
+	printf("<?xml version=\"1.0\"?>\n");
+	//printf("<?xml-stylesheet href=\"lv2x2xhtml.xsl\" type=\"text/xsl\"?>\n");
+
 	printf("<lv2plugin>\n");
 	printf("<meta>\n");
 
