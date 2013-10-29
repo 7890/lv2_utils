@@ -1,4 +1,5 @@
 <lv2plugin_doc>
+<!-- this is an example file for manually add documentation to the generated output -->
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#passthru">
 <p>This filter simply forwards all MIDI events from input to output. It can be used as a template to program other custom filters.</p>
