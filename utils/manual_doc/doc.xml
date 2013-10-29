@@ -17,7 +17,8 @@
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#mididup">
-<p>The mididup filter duplicates all events of the given source channel to a given channel. Possible use-case: duplicate all events from MIDI channel 1 to channel 2, drive two instruments (configured on channel 1 and 2) at the same time; instruments can still be addressed individually via channel 1 and 2 respectively.</p>
+<p>The mididup filter duplicates all events of the given source channel to a given channel.</p>
+<p>Possible use-case: duplicate all events from MIDI channel 1 to channel 2, drive two instruments (configured on channel 1 and 2) at the same time; instruments can still be addressed individually via channel 1 and 2 respectively.</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#mididelay">
@@ -26,11 +27,13 @@
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#sostenuto">
-<p>This filter will delay note-off messages by a given time (0-60 sec). See also notetoggle filter. Possible use-case: emulate a piano sostenuto pedal.</p>
+<p>This filter will delay note-off messages by a given time (0-60 sec). See also notetoggle filter.</p>
+<p>Possible use-case: emulate a piano sostenuto pedal.</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#enforcescale">
-<p>The enforcescale filter will enforce a musical scale (a set of allowed note pitches). The scale can be one of C Major, C# Major, D Major, D# Major, E Major, E# Major, F Major, F# Major, G Major, G# Major, A Major, A# Major or B Major. Note pitches that doesn't fit the scale can be either discarded or moved up or down to the nearest pitch in scale. Possible use-case: extract only notes that fit a specified scale. Enforce all notes to be played in a specified scale.</p>
+<p>The enforcescale filter will enforce a musical scale (a set of allowed note pitches). The scale can be one of C Major, C# Major, D Major, D# Major, E Major, E# Major, F Major, F# Major, G Major, G# Major, A Major, A# Major or B Major. Note pitches that doesn't fit the scale can be either discarded or moved up or down to the nearest pitch in scale.</p>
+<p>Possible use-case: extract only notes that fit a specified scale. Enforce all notes to be played in a specified scale.</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#notetoggle">
@@ -41,23 +44,28 @@
 
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#mapkeyscale">
-<p>The mapkeyscale filter allows to lower or increase note pitches by a given amount. For every pitch C, C#, D, D#, E, F, F#, G, G#, A, A# and B, a separate amount (-12 - +12 halftones) can be defined. Furthermore, notes of a specific pitch can be masked out (off). Use-cases: create a special musical scale (also see: enforcescale filter). Remove notes of a specified pitch. Flatten note pitches so they get monotonic (for instance, map all pitches to the same resulting pitch).</p>
+<p>The mapkeyscale filter allows to lower or increase note pitches by a given amount. For every pitch C, C#, D, D#, E, F, F#, G, G#, A, A# and B, a separate amount (-12 - +12 halftones) can be defined. Furthermore, notes of a specific pitch can be masked out (off).</p>
+<p>Use-cases: create a special musical scale (also see: enforcescale filter). Remove notes of a specified pitch. Flatten note pitches so they get monotonic (for instance, map all pitches to the same resulting pitch).</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#keyrange">
-<p>With the keyrange filter, a range defined by lowest and highest pitch of a note (0-127) can be used to let pass only the notes that fit the pitch range. The range can be inclusive or exclusive (inverted). Possible use-cases: get all notes with pitch values 90-100. Get all notes with pitches above value 100 (range 100-127). Get all notes with pitches below value 100 (range 0-99). Get only notes of pitch value=100 (range 100-100).</p>
+<p>With the keyrange filter, a range defined by lowest and highest pitch of a note (0-127) can be used to let pass only the notes that fit the pitch range. The range can be inclusive or exclusive (inverted).</p>
+<p>Possible use-cases: get all notes with pitch values 90-100. Get all notes with pitches above value 100 (range 100-127). Get all notes with pitches below value 100 (range 0-99). Get only notes of pitch value=100 (range 100-100).</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#velocityrange">
-<p>Another range filter is the velocityrange filter. A range defined by lowest and highest volume/velocity (0-127) can be used to let pass only the notes with a velocity that fit the range. The range can be inclusive or exclusive (inverted). Possible use-cases: get all notes with velocities 90-100. Get all notes with velocities above value 100 (range 100-127). Get all notes with velocity below value 100 (range 0-99). Get only notes with velocity of value=100 (range 100-100).</p>
+<p>Another range filter is the velocityrange filter. A range defined by lowest and highest volume/velocity (0-127) can be used to let pass only the notes with a velocity that fit the range. The range can be inclusive or exclusive (inverted).</p>
+<p>Possible use-cases: get all notes with velocities 90-100. Get all notes with velocities above value 100 (range 100-127). Get all notes with velocity below value 100 (range 0-99). Get only notes with velocity of value=100 (range 100-100).</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#randvelocity">
-<p>This filter will modify the velocity in a random way. The amount of possible change is defined through a parameter (0-127), where 0 will leave the original velocity and 127 will add or subtract an amount between 0 and 127 to / from the original velocity value. The new value will never be less than 0 or greater than 127 (limited). Possible use-case: slightly change velocities of incoming notes in a random way so that the new velocities will not be greater or less than original value +/- the value of randomization parameter (for instance 10).</p>
+<p>This filter will modify the velocity in a random way. The amount of possible change is defined through a parameter (0-127), where 0 will leave the original velocity and 127 will add or subtract an amount between 0 and 127 to / from the original velocity value. The new value will never be less than 0 or greater than 127 (limited).</p>
+<p>Possible use-case: slightly change velocities of incoming notes in a random way so that the new velocities will not be greater or less than original value +/- the value of randomization parameter (for instance 10).</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#normrandvel">
-<p>Like the randvelocity filter, the normrandvel filter will randomly change the velocity of incoming notes by a certain amount. In this instance, the amount is given by a standard deviation. Possible use-case: randomize velocity in a way that reflects a distribution of velocities around the original value with the given standard deviation. Chances that new velocities are close to the original value are greater with this filter than with the randvelocity filter because of the distribution of random values.</p>
+<p>Like the randvelocity filter, the normrandvel filter will randomly change the velocity of incoming notes by a certain amount. In this instance, the amount is given by a standard deviation.</p>
+<p>Possible use-case: randomize velocity in a way that reflects a distribution of velocities around the original value with the given standard deviation. Chances that new velocities are close to the original value are greater with this filter than with the randvelocity filter because of the distribution of random values.</p>
 </doc>
 
 <doc uri="http://gareus.org/oss/lv2/midifilter#noactivesensing">
