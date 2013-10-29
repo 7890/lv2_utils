@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#//tb/132029
+
 if [ $# -eq 0 ]
 then
 	echo "need param: lv2 plugin uri"

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #lv2ls | while read line; do ./autoscreenshot.sh "$line"; sleep 1; done
+#//tb/132029
 
 if [ $# -eq 0 ]
 then
