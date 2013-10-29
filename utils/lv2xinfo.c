@@ -29,7 +29,7 @@
 
 #include "lilv/lilv.h"
 
-#include "lilv_config.h"
+//#include "lilv_config.h"
 
 #ifdef _MSC_VER
 #    define isnan _isnan
@@ -333,7 +333,8 @@ static void
 print_version(void)
 {
 	printf(
-		"lv2info (lilv) " LILV_VERSION "\n"
+		//"lv2info (lilv) " LILV_VERSION "\n"
+		"lv2info (lilv)\n"
 		"Copyright 2007-2011 David Robillard <http://drobilla.net>\n"
 		"2013 Thomas Brand <tom@trellis.ch>\n"
 		"License: <http://www.opensource.org/licenses/isc-license>\n"
