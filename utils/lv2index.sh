@@ -73,12 +73,12 @@ cat $tmpfile \
 	-b -nl \
 	-e 'td' -v "meta/author/name" -b -nl \
 	-e 'td' -v "count(port)" -b -nl \
-	-e 'td' -v "count(port[@direction=1 and @type=1])" \-b -nl \
-	-e 'td' -v "count(port[@direction=1 and @type=2])" \-b -nl \
-	-e 'td' -v "count(port[@direction=1 and @type=3])" \-b -nl \
-	-e 'td' -v "count(port[@direction=2 and @type=1])" \-b -nl \
-	-e 'td' -v "count(port[@direction=2 and @type=2])" \-b -nl \
-	-e 'td' -v "count(port[@direction=2 and @type=3])" \-b -nl \
+	-e 'td' -v "count(port[@direction=1 and @type=1])" -b -nl \
+	-e 'td' -v "count(port[@direction=1 and @type=2])" -b -nl \
+	-e 'td' -v "count(port[@direction=1 and @type=3])" -b -nl \
+	-e 'td' -v "count(port[@direction=2 and @type=1])" -b -nl \
+	-e 'td' -v "count(port[@direction=2 and @type=2])" -b -nl \
+	-e 'td' -v "count(port[@direction=2 and @type=3])" -b -nl \
 	-e 'td' -v "meta/uri" -b -nl \
 	-b -b -b -nl
 
