@@ -11,11 +11,10 @@ version="1.0">
 inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 -->
   <xsl:decimal-format name="lv2_decimal_value" decimal-separator="." grouping-separator=" "/>
-  <xsl:variable name="audio_port_icon_uri">../svg_icons/lv2_port_type_audio.svg</xsl:variable>
-  <xsl:variable name="control_port_icon_uri">../svg_icons/lv2_port_type_control.svg</xsl:variable>
-  <xsl:variable name="atom_port_icon_uri">../svg_icons/lv2_port_type_atom.svg</xsl:variable>
-  <xsl:variable name="screenshots_uri">../screenshots</xsl:variable>
-  <xsl:variable name="this_uri">../stylesheets/lv2x2xhtml.xsl</xsl:variable>
+  <xsl:variable name="audio_port_icon_uri">svg_icons/lv2_port_type_audio.svg</xsl:variable>
+  <xsl:variable name="control_port_icon_uri">svg_icons/lv2_port_type_control.svg</xsl:variable>
+  <xsl:variable name="atom_port_icon_uri">svg_icons/lv2_port_type_atom.svg</xsl:variable>
+  <xsl:variable name="screenshots_uri">screenshots</xsl:variable>
 
   <xsl:variable name="plugin_body_width">300</xsl:variable>
   <xsl:variable name="port_spacing_vertical">30</xsl:variable>
@@ -43,7 +42,6 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 
   <xsl:template match="//lv2plugin">
     <html xmlns="http://www.w3.org/1999/xhtml">
-
       <head>
         <meta charset="utf-8"/>
         <title>
