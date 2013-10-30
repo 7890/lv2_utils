@@ -106,7 +106,7 @@ embed screenshot as base64 string
         <div style="clear:left"/>
 
         <hr/>
-        <small>Page generated with lv2xinfo, xmlstarlet, lv2x2xhtml.sh - see <a href="https://github.com/7890/lv2_utils">github repo</a></small>
+        <small>Page generated with lv2xinfo, xmlstarlet, lv2x2xhtml.sh - <a href="http://lv2plug.in/ns/lv2core/lv2core.html">lv2 spec</a> - <a href="https://github.com/7890/lv2_utils">lv2_utils on github</a></small>
       </body>
     </html>
   </xsl:template>
