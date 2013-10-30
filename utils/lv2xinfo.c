@@ -44,6 +44,38 @@ LilvNode* preset_class        = NULL;
 LilvNode* designation_pred    = NULL;
 LilvNode* supports_event_pred = NULL;
 
+#include <string>
+#include <boost/algorithm/string.hpp>
+
+void escape(std::string *data)
+{
+    using boost::algorithm::replace_all;
+    replace_all(*data, "&",  "&amp;");
+    replace_all(*data, "\"", "&quot;");
+    replace_all(*data, "\'", "&apos;");
+    replace_all(*data, "<",  "&lt;");
+    replace_all(*data, ">",  "&gt;");
+}
+
+/*
+staticvoid encode(string& data) {
+    string buffer;
+    buffer.reserve(data.size());
+    for(size_t pos = 0; pos != data.size(); ++pos) {
+        switch(data[pos) {
+            case '&':  buffer.append("&amp;");       break;
+            case '\"': buffer.append("&quot;");      break;
+            case '\'': buffer.append("&apos;");      break;
+            case '<':  buffer.append("&lt;");        break;
+            case '>':  buffer.append("&gt;");        break;
+            default:   buffer.append(1, &data[pos]); break;
+        }
+    }
+    data.swap(buffer);
+}
+*/
+
+
 static void
 print_port(const LilvPlugin* p,
            uint32_t          index,
@@ -116,7 +148,10 @@ print_port(const LilvPlugin* p,
 
 	LilvNode* name = lilv_port_get_name(p, port);
 
-	printf("<name>%s</name>\n", lilv_node_as_string(name));
+	const char* name_=lilv_node_as_string(name);
+	std::string str(name_, strnlen(name_, 255));
+	escape(&str);
+	printf("<name>%s</name>\n", str.c_str());
 
 	lilv_node_free(name);
 
