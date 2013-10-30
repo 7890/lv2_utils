@@ -55,7 +55,7 @@ tmpfile=`mktemp`
 xmlstarlet ed -d "//screenshot" \
 	-s "//lv2plugin" \
 	-t elem -n 'screenshot' \
-	-v "`base64 -w 1000 $screenshots_dir/$image_filename`" \
+	-v "`base64 -w 100000 $screenshots_dir/$image_filename`" \
 	-i "//screenshot" \
 	-t attr -n 'encoding' -v "base64" \
 	-i "//screenshot" \
