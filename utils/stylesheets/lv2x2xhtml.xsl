@@ -36,6 +36,8 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 
   <xsl:variable name="plugin_uri" select="//lv2plugin/meta/uri"/>
 
+  <xsl:variable name="max_label_length" select="30"/>
+
 <!-- replaced with inline data -->
   <xsl:variable name="audio_port_icon_uri">svg_icons/lv2_port_type_audio.svg</xsl:variable>
   <xsl:variable name="control_port_icon_uri">svg_icons/lv2_port_type_control.svg</xsl:variable>
@@ -134,7 +136,7 @@ embed screenshot as base64 string
       </svg:foreignObject>
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$audio_port_color});stroke-width:2"/>
       <svg:text x="40" y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -159,7 +161,7 @@ embed screenshot as base64 string
       </svg:foreignObject>
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="40 " y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -188,7 +190,7 @@ embed screenshot as base64 string
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$control_port_color});stroke-width:2"/>
       <!-- needs check! -->
       <svg:text x="40" y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -215,7 +217,7 @@ embed screenshot as base64 string
       </svg:foreignObject>
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$audio_port_color});stroke-width:2"/>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + 3 * $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -240,7 +242,7 @@ embed screenshot as base64 string
       </svg:foreignObject>
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + 3 * $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -265,7 +267,7 @@ embed screenshot as base64 string
       </svg:foreignObject>
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$control_port_color});stroke-width:2"/>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="concat(@index,') ',$name)"/>
+        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
       </svg:text>
       <svg:text x="{10 + 3 * $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
