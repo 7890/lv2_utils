@@ -39,5 +39,6 @@ kill -9 $pid
 
 #cut unreasonable menu
 convert "$outputdir"/"$filename"_.png -crop +2+29 +repage "$outputdir"/"$filename"
+rm -f "$outputdir"/"$filename"_.png
 
 ls -1 "$outputdir"/"$filename"
