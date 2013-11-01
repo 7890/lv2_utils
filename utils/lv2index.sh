@@ -68,7 +68,7 @@ cat $tmpfile \
 	-e 'tr' -nl \
 	-e 'td' -v "meta/class" -b -nl \
 	-e 'td' -e 'a' -a 'href'\
-		-v "concat ( translate( translate( translate(meta/uri,':',''),'/','_' ),'#','_' ),'.xhtml' )" -b \
+		-v "concat ( translate( translate( translate(meta/uri,':','_'),'/','_' ),'#','_' ),'.xhtml' )" -b \
 	-v "meta/name" -b \
 	-b -nl \
 	-e 'td' -v "meta/author/name" -b -nl \

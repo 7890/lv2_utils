@@ -26,7 +26,7 @@ manual_doc_file=manual_doc/doc.xml
 for tool in {xmlstarlet,which}; \
 	do checkAvail "$tool"; done
 
-stripped=`echo "$1" | sed 's/://g' | sed 's/\//_/g' | sed 's/#/_/g' `
+stripped=`echo "$1" | sed 's/:/_/g' | sed 's/\//_/g' | sed 's/#/_/g' `
 
 xml_filename="$stripped".xml
 

@@ -25,8 +25,8 @@ xml_dir=xhtml
 for tool in {xmlstarlet,base64}; \
 	do checkAvail "$tool"; done
 
-stripped=`echo "$1" | sed 's/://g' | sed 's/\//_/g' | sed 's/#/_/g' `
-image_filename="scrot_$stripped.png"
+stripped=`echo "$1" | sed 's/:/_/g' | sed 's/\//_/g' | sed 's/#/_/g' `
+image_filename="$stripped.png"
 
 if [ ! -f "$screenshots_dir"/"$image_filename" ]
 then

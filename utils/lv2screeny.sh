@@ -27,8 +27,8 @@ for tool in {jalv.gtk,scrot,sed,convert}; \
 
 mkdir -p "$outputdir"
 
-stripped=`echo "$1" | sed 's/://g' | sed 's/\//_/g' | sed 's/#/_/g' `
-filename="scrot_$stripped.png"
+stripped=`echo "$1" | sed 's/:/_/g' | sed 's/\//_/g' | sed 's/#/_/g'`
+filename="$stripped.png"
 
 scrot --delay 2 --focused "$outputdir"/"$filename"_.png &
 #jalv.gtk http://gareus.org/oss/lv2/meters#NORstereo_gtk &

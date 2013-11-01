@@ -39,7 +39,7 @@ cat $tmpfile \
 	-v "count(port[@direction=2 and @type=1])" \-o ";" \
 	-v "count(port[@direction=2 and @type=2])" \-o ";" \
 	-v "count(port[@direction=2 and @type=3])" \-o ";" \
-	-v "concat ( translate( translate( translate(meta/uri,':',''),'/','_' ),'#','_' ),'.xhtml' )" -o ";" \
+	-v "concat ( translate( translate( translate(meta/uri,':','_'),'/','_' ),'#','_' ),'.xhtml' )" -o ";" \
 	-v "meta/uri" -o ";" -nl
 
 rm -f $tmpfile

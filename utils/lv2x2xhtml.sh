@@ -27,7 +27,7 @@ for tool in {lv2xinfo,xmlstarlet,sed}; \
 
 mkdir -p "$outputdir"
 
-filename=`echo "$1" | sed 's/://g' | sed 's/\//_/g' | sed 's/#/_/g'`
+filename=`echo "$1" | sed 's/:/_/g' | sed 's/\//_/g' | sed 's/#/_/g'`
 
 echo "creating xml file for plugin"
 echo "$1"
