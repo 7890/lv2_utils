@@ -32,20 +32,25 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
   <xsl:variable name="control_port_color">000,155,00</xsl:variable>
   <xsl:variable name="atom_port_color">155,000,000</xsl:variable>
 
+<!--
   <xsl:variable name="screenshots_uri">screenshots</xsl:variable>
-  <xsl:variable name="plugin_jalv_gtk_image" select=" concat($screenshots_uri,'/scrot_', translate(  translate(   translate(lv2plugin/meta/uri,':',''),   '/','_'  ),  '#','_' ), '.png' )"/>
+  <xsl:variable name="plugin_jalv_gtk_screenshot_uri" select="concat($screenshots_uri,'/',translate(translate(translate(lv2plugin/meta/uri,':','_'),   '/','_'  ),  '#','_' ), '.png' )"/>
+-->
 
   <xsl:variable name="plugin_uri" select="//lv2plugin/meta/uri"/>
 
   <xsl:variable name="index_url">index.html</xsl:variable>
 
-  <xsl:variable name="max_label_length" select="30"/>
+  <xsl:variable name="max_label_length" select="26"/>
 
   <xsl:variable name="svg_icons_file_uri">../svg_icons/svg_icons.xml</xsl:variable>
   <xsl:variable name="manual_doc_file_uri">../manual_doc/doc.xml</xsl:variable>
 
   <xsl:variable name="audio_port_in_b64" select="document($svg_icons_file_uri)//icon[@handle='audio_input']/data"/>
   <xsl:variable name="audio_port_out_b64" select="document($svg_icons_file_uri)//icon[@handle='audio_output']/data"/>
+
+  <xsl:variable name="atom_port_in_generic_b64" select="document($svg_icons_file_uri)//icon[@handle='atom_input_generic']/data"/>
+  <xsl:variable name="atom_port_out_generic_b64" select="document($svg_icons_file_uri)//icon[@handle='atom_output_generic']/data"/>
 
   <xsl:variable name="atom_port_in_midi_b64" select="document($svg_icons_file_uri)//icon[@handle='atom_input_midi']/data"/>
   <xsl:variable name="atom_port_out_midi_b64" select="document($svg_icons_file_uri)//icon[@handle='atom_output_midi']/data"/>
@@ -65,9 +70,10 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
         <title>
           <xsl:value-of select="concat('lv2 Plugin Description: ', meta/name,' (',meta/class,') - By ',meta/author/name)"/>
         </title>
-
 <style type="text/css">
-
+body {background:#eff;}
+<!--
+/*
 .control_port_in_enumeration {
 	width:35;
 	height:25;
@@ -109,19 +115,27 @@ inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 	background-image: url("data:image/svg+xml;base64,<xsl:value-of select="$control_port_out_float_b64"/>");
 	background-repeat:no-repeat;
 }
-
+*/
+-->
 .port_box {
 	float:left;
-	background:rgb(250,250,250);
+	background:rgb(240,240,240);
 	color:rgb(20,20,20);
 /*	border-style:dotted;*/
 	margin:10px;
 	padding:5px;
-	width:300px;
+	width:600px;
+}
+
+.port_box_title {
+	width:100%;
+	background-color:rgb(0,190,0);
 }
 
 table.key_value {
-	width:100%; margin-bottom:1em; border:1px solid #aaa;
+	width:100%; 
+	margin-bottom:1em; 
+	border:1px solid #aaa;
 }
 
 .left {text-align:left;}
@@ -146,49 +160,56 @@ table.key_value {
 
         <svg:defs>
 
-                <svg:image id="audio_port_in" width="50" height="24" transform="rotate(-6)"
+	<!-- rotate(..)-->
+	<xsl:variable name="icon_transform"></xsl:variable>
+
+                <svg:image id="audio_port_in" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$audio_port_in_b64}"/>
 
-                <svg:image id="audio_port_out" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="audio_port_out" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$audio_port_out_b64}"/>
 
 
-                <svg:image id="atom_port_in_midi" width="50" height="23" transform="rotate(-6)"
+                <svg:image id="atom_port_in_generic" width="50" height="23" transform="{$icon_transform}"
+                xlink:href="data:image/svg+xml;base64,{$atom_port_in_generic_b64}"/>
+
+                <svg:image id="atom_port_out_generic" width="50" height="23" transform="{$icon_transform}"
+                xlink:href="data:image/svg+xml;base64,{$atom_port_out_generic_b64}"/>
+
+                <svg:image id="atom_port_in_midi" width="50" height="23" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$atom_port_in_midi_b64}"/>
 
-                <svg:image id="atom_port_out_midi" width="50" height="23" transform="rotate(-6)"
+                <svg:image id="atom_port_out_midi" width="50" height="23" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$atom_port_out_midi_b64}"/>
 
 
-                <svg:image id="control_port_in_enumeration" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_in_enumeration" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_enumeration_b64}"/>
 
-                <svg:image id="control_port_in_toggle" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_in_toggle" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_toggle_b64}"/>
 
-                <svg:image id="control_port_in_float" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_in_float" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_float_b64}"/>
 
 
-                <svg:image id="control_port_out_enumeration" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_out_enumeration" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_enumeration_b64}"/>
 
-                <svg:image id="control_port_out_toggle" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_out_toggle" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_toggle_b64}"/>
 
-                <svg:image id="control_port_out_float" width="50" height="24" transform="rotate(-6)"
+                <svg:image id="control_port_out_float" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_float_b64}"/>
 
-
         </svg:defs>
-
 
             <xsl:call-template name="plugin_graph"/>
           </svg>
         </div>
 
+<xsl:if test="//screenshot">
         <div style="clear:left"/>
-
         <div style="float:left;margin-top:20px">
 <!--
 embed screenshot as base64 string
@@ -196,8 +217,8 @@ embed screenshot as base64 string
           <img alt="jalv.gtk Screenshot" src="data:image/png;base64,{//screenshot}"/>
 
         </div>
-
         <div style="clear:left"/>
+</xsl:if>
 
 	<div style="float:left;margin-top:20px">
 	  <xsl:for-each select="document($manual_doc_file_uri)//doc[@uri=$plugin_uri]/p">
@@ -209,13 +230,21 @@ embed screenshot as base64 string
 
         <div style="clear:left"/>
 
+<xsl:if test="port[@direction=1 and @type=1]">
+<h2>Control Inputs</h2>
+
         <xsl:apply-templates select="port[@direction=1 and @type=1]"/>
 
         <div style="clear:left;margin-top:60px;"/>
+</xsl:if>
+
+<xsl:if test="port[@direction=2 and @type=1]">
+<h2>Control Outputs</h2>
 
 	<xsl:apply-templates select="port[@direction=2 and @type=1]"/>
 
         <div style="clear:left"/>
+</xsl:if>
 
         <hr/>
         <small>Page generated with lv2xinfo, xmlstarlet, lv2x2xhtml.sh - <a href="http://lv2plug.in/ns/lv2core/lv2core.html">lv2 spec</a> - <a href="https://github.com/7890/lv2_utils">lv2_utils on github</a></small>
@@ -257,7 +286,15 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
+<xsl:choose>
+<xsl:when test="designation">
+      <svg:use x = "0" y = "{-25 + $y}" xlink:href = "#atom_port_in_generic"/>
+</xsl:when>
+<xsl:otherwise>
       <svg:use x = "0" y = "{-25 + $y}" xlink:href = "#atom_port_in_midi"/>
+</xsl:otherwise>
+</xsl:choose>
+
 
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="50 " y="{$y - 5}" fill="black">
@@ -330,7 +367,16 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
+
+<xsl:choose>
+<xsl:when test="designation">
+      <svg:use x = "{-50 + 3 * $plugin_body_width}" y = "{-25 + $y}" xlink:href = "#atom_port_out_generic"/>
+</xsl:when>
+<xsl:otherwise>
       <svg:use x = "{-50 + 3 * $plugin_body_width}" y = "{-25 + $y}" xlink:href = "#atom_port_out_midi"/>
+</xsl:otherwise>
+</xsl:choose>
+
 
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="{-10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black" style="text-anchor: end;">
@@ -386,26 +432,33 @@ embed screenshot as base64 string
     <a name="{@symbol}"/>
 
     <div class="port_box">
-      <h2>
+ 
+<a href="#top_of_page">
+<div class="port_box_title">
+     <h3>
         <xsl:value-of select="concat(@index,') ',name)"/>
-      </h2>
+      </h3>
+</div>
+</a>
 
 
+<table style="width:100%">
+<tr>
+<td style="width:50%;vertical-align:top;">
 
+
+<!--
 <xsl:if test="@direction=1">
 <a href="#top_of_page">
 <xsl:choose>
 <xsl:when test="property = 'http://lv2plug.in/ns/lv2core#enumeration'">
     <div class="control_port_in_enumeration"><br/><br/></div>
-control input (enumeration)
 </xsl:when>
 <xsl:when test="property = 'http://lv2plug.in/ns/lv2core#toggled'">
     <div class="control_port_in_toggle"><br/><br/></div>
-control input (toggle)
 </xsl:when>
 <xsl:otherwise>
     <div class="control_port_in_float"><br/><br/></div>
-control intput (float)
 </xsl:otherwise>
 </xsl:choose>
 </a>
@@ -417,22 +470,33 @@ control intput (float)
 <xsl:choose>
 <xsl:when test="property = 'http://lv2plug.in/ns/lv2core#enumeration'">
     <div class="control_port_out_enumeration"><br/><br/></div>
-control output (enumeration)
 </xsl:when>
 <xsl:when test="property = 'http://lv2plug.in/ns/lv2core#toggled'">
     <div class="control_port_out_toggle"><br/><br/></div>
-control output (toggle)
 </xsl:when>
 <xsl:otherwise>
     <div class="control_port_out_float"><br/><br/></div>
-control output (float)
 </xsl:otherwise>
 </xsl:choose>
 </a>
 </xsl:if>
+-->
 
+      <xsl:if test="property">
+<h4>Properties</h4>
+	<ul>
+	      <xsl:for-each select="property">
+	<li>
+       		   <a href="{.}"><xsl:value-of select="substring-after(.,'#')"/></a>
+	</li>
+     		 </xsl:for-each>
+	</ul>
+	</xsl:if>
 
-<h3>range</h3>
+</td>
+<td>
+
+<h4>Range</h4>
 <table class="key_value">
 <tr>
 	<td>min:</td>
@@ -458,26 +522,17 @@ control output (float)
 </tr>
 </table>
 
-      <xsl:if test="property">
-<h3>properties</h3>
-	<ul>
-	      <xsl:for-each select="property">
-	<li>
-       		   <xsl:value-of select="substring-after(.,'#')"/>
-	</li>
-     		 </xsl:for-each>
-	</ul>
-	</xsl:if>
+
 
       <xsl:if test="scale_point">
-<h3>scale points</h3>
+<h4>Scale Points</h4>
 <table class="key_value">
 
         <xsl:for-each select="scale_point">
 	  <xsl:sort order="ascending" data-type="number" select="@value"/>
 
 <tr>
-	<td>
+	<td style="vertical-align:top;">
           <xsl:value-of select="@value"/>
 	</td>
 	<td class="right">
@@ -490,6 +545,12 @@ control output (float)
 
 </table>
       </xsl:if>
+
+
+</td>
+</tr>
+</table>
+
 
     </div>
 
