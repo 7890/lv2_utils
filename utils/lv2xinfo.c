@@ -43,6 +43,7 @@ LilvNode* label_pred          = NULL;
 LilvNode* preset_class        = NULL;
 LilvNode* designation_pred    = NULL;
 LilvNode* supports_event_pred = NULL;
+LilvNode* uri_rdfs_comment    = NULL;
 
 #include <string>
 #include <boost/algorithm/string.hpp>
@@ -57,24 +58,18 @@ void escape(std::string *data)
     replace_all(*data, ">",  "&gt;");
 }
 
-/*
-staticvoid encode(string& data) {
-    string buffer;
-    buffer.reserve(data.size());
-    for(size_t pos = 0; pos != data.size(); ++pos) {
-        switch(data[pos) {
-            case '&':  buffer.append("&amp;");       break;
-            case '\"': buffer.append("&quot;");      break;
-            case '\'': buffer.append("&apos;");      break;
-            case '<':  buffer.append("&lt;");        break;
-            case '>':  buffer.append("&gt;");        break;
-            default:   buffer.append(1, &data[pos]); break;
+/* https://github.com/x42/lv2toweb/blob/master/lv2toweb.c#L143  */
+static const char * port_docs(const LilvPlugin* p, uint32_t idx) {
+        LilvNodes* comments = lilv_port_get_value(p,
+                        lilv_plugin_get_port_by_index(p, idx),
+                        uri_rdfs_comment);
+        if (comments) {
+                const char *docs = lilv_node_as_string(lilv_nodes_get_first(comments));
+                lilv_nodes_free(comments);
+                return docs;
         }
-    }
-    data.swap(buffer);
+        return NULL;
 }
-*/
-
 
 static void
 print_port(const LilvPlugin* p,
@@ -196,8 +191,15 @@ print_port(const LilvPlugin* p,
 	}
 	lilv_scale_points_free(points);
 
+	const char *doc = port_docs(p, index);
+        if (doc) {
+		
+                printf("<doc><p>%s</p></doc>\n", doc);
+        }
+
 	printf("</port>\n");
 }
+
 
 static void
 print_plugin(LilvWorld*        world,
@@ -446,6 +448,7 @@ main(int argc, char** argv)
 	preset_class        = lilv_new_uri(world, LV2_PRESETS__Preset);
 	designation_pred    = lilv_new_uri(world, LV2_CORE__designation);
 	supports_event_pred = lilv_new_uri(world, LV2_EVENT__supportsEvent);
+	uri_rdfs_comment    = lilv_new_uri(world, LILV_NS_RDFS "comment");
 
 	const LilvPlugins* plugins = lilv_world_get_all_plugins(world);
 	const LilvPlugin*  p       = lilv_plugins_get_by_uri(plugins, uri);
