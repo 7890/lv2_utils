@@ -10,8 +10,12 @@ version="1.0">
 //tb/131028
 inspired by http://edutechwiki.unige.ch/en/XSLT_to_generate_SVG_tutorial
 -->
-  <xsl:decimal-format name="lv2_decimal_value" decimal-separator="." grouping-separator=" "/>
 
+  <xsl:param name="call_timestamp"></xsl:param>
+
+  <xsl:variable name="lv2x2xhtml_version">0.13.1102</xsl:variable>
+
+  <xsl:decimal-format name="lv2_decimal_value" decimal-separator="." grouping-separator=" "/>
   <xsl:variable name="plugin_body_width">300</xsl:variable>
   <xsl:variable name="port_spacing_vertical">30</xsl:variable>
   <xsl:variable name="port_group_spacing_vertical">10</xsl:variable>
@@ -127,9 +131,25 @@ body {background:#eff;}
 	width:600px;
 }
 
-.port_box_title {
+.port_box_title_1 {
 	width:100%;
+	color:rgb(255,255,255);
 	background-color:rgb(0,190,0);
+}
+.port_box_title_2 {
+	width:100%;
+	color:rgb(255,255,255);
+	background-color:rgb(0,0,155);
+}
+.port_box_title_3 {
+	width:100%;
+	color:rgb(255,255,255);
+	background-color:rgb(155,0,0);
+}
+
+.toplink a {
+	color:white; 
+	text-decoration:none;
 }
 
 table.key_value {
@@ -138,8 +158,9 @@ table.key_value {
 	border:1px solid #aaa;
 }
 
-.left {text-align:left;}
-.right {text-align:right;}
+td.left {text-align:left;}
+td.right {text-align:right;}
+td.top {vertical-align:top;}
 
 </style>
 
@@ -208,8 +229,9 @@ table.key_value {
           </svg>
         </div>
 
-<xsl:if test="//screenshot">
         <div style="clear:left"/>
+
+<xsl:if test="//screenshot">
         <div style="float:left;margin-top:20px">
 <!--
 embed screenshot as base64 string
@@ -219,6 +241,7 @@ embed screenshot as base64 string
         </div>
         <div style="clear:left"/>
 </xsl:if>
+
 
 	<div style="float:left;margin-top:20px">
 	  <xsl:for-each select="document($manual_doc_file_uri)//doc[@uri=$plugin_uri]/p">
@@ -230,24 +253,47 @@ embed screenshot as base64 string
 
         <div style="clear:left"/>
 
+<xsl:if test="port[@direction=1 and @type=2]">
+<h2>Audio Inputs</h2>
+        <xsl:apply-templates select="port[@direction=1 and @type=2]"/>
+        <div style="clear:left;"/>
+</xsl:if>
+
+<xsl:if test="port[@direction=1 and @type=3]">
+<h2>Atom Inputs</h2>
+        <xsl:apply-templates select="port[@direction=1 and @type=3]"/>
+        <div style="clear:left;"/>
+</xsl:if>
+
+
 <xsl:if test="port[@direction=1 and @type=1]">
 <h2>Control Inputs</h2>
-
         <xsl:apply-templates select="port[@direction=1 and @type=1]"/>
+        <div style="clear:left;"/>
+</xsl:if>
 
-        <div style="clear:left;margin-top:60px;"/>
+
+<xsl:if test="port[@direction=2 and @type=2]">
+<h2>Audio Outputs</h2>
+	<xsl:apply-templates select="port[@direction=2 and @type=2]"/>
+        <div style="clear:left"/>
+</xsl:if>
+
+<xsl:if test="port[@direction=2 and @type=3]">
+<h2>Atom Outputs</h2>
+	<xsl:apply-templates select="port[@direction=2 and @type=3]"/>
+        <div style="clear:left"/>
 </xsl:if>
 
 <xsl:if test="port[@direction=2 and @type=1]">
 <h2>Control Outputs</h2>
-
 	<xsl:apply-templates select="port[@direction=2 and @type=1]"/>
-
         <div style="clear:left"/>
 </xsl:if>
 
+
         <hr/>
-        <small>Page generated with lv2xinfo, xmlstarlet, lv2x2xhtml.sh - <a href="http://lv2plug.in/ns/lv2core/lv2core.html">lv2 spec</a> - <a href="https://github.com/7890/lv2_utils">lv2_utils on github</a></small>
+        <small><xsl:value-of select="concat('created ',$call_timestamp,' with lv2x2html v',$lv2x2xhtml_version)"/> - <a href="https://github.com/7890/lv2_utils">lv2_utils on github</a></small>
       </body>
     </html>
   </xsl:template>
@@ -266,11 +312,22 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
+      <svg:a xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#{@symbol}" target="_top">
       <svg:use x = "0" y = "{-25 + $y}" xlink:href = "#audio_port_in"/>
+	</svg:a>
 
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$audio_port_color});stroke-width:2"/>
       <svg:text x="50" y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -286,6 +343,11 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
+
+<!-- 
+!
+-->
+      <svg:a xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#{@symbol}" target="_top">
 <xsl:choose>
 <xsl:when test="designation">
       <svg:use x = "0" y = "{-25 + $y}" xlink:href = "#atom_port_in_generic"/>
@@ -294,11 +356,20 @@ embed screenshot as base64 string
       <svg:use x = "0" y = "{-25 + $y}" xlink:href = "#atom_port_in_midi"/>
 </xsl:otherwise>
 </xsl:choose>
-
+</svg:a>
 
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="50 " y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+ 
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -331,7 +402,17 @@ embed screenshot as base64 string
       <svg:line x1="0" y1="{$y}" x2="{10 + $plugin_body_width}" y2="{$y}" style="stroke:rgb({$control_port_color});stroke-width:2"/>
       <!-- needs check! -->
       <svg:text x="50" y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+
+ 
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
       <svg:text x="{10 + $plugin_body_width}" y="{$y - 5}" fill="black">
         <xsl:value-of select="concat('(',$symbol,')')"/>
@@ -347,14 +428,25 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
+      <svg:a xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#{@symbol}" target="_top">
       <svg:use x = "{-50 + 3 * $plugin_body_width}" y = "{-25 + $y}" xlink:href = "#audio_port_out"/>
+	</svg:a>
 
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$audio_port_color});stroke-width:2"/>
       <svg:text x="{-10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black" style="text-anchor: end;">
         <xsl:value-of select="concat('(',$symbol,')')"/>
       </svg:text>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+ 
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
     </xsl:for-each>
 
@@ -367,7 +459,7 @@ embed screenshot as base64 string
       <xsl:variable name="symbol" select="@symbol"/>
       <xsl:variable name="name" select="name"/>
 
-
+      <svg:a xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#{@symbol}" target="_top">
 <xsl:choose>
 <xsl:when test="designation">
       <svg:use x = "{-50 + 3 * $plugin_body_width}" y = "{-25 + $y}" xlink:href = "#atom_port_out_generic"/>
@@ -376,14 +468,23 @@ embed screenshot as base64 string
       <svg:use x = "{-50 + 3 * $plugin_body_width}" y = "{-25 + $y}" xlink:href = "#atom_port_out_midi"/>
 </xsl:otherwise>
 </xsl:choose>
-
+</svg:a>
 
       <svg:line x1="{-10 + 2 * $plugin_body_width}" y1="{$y}" x2="{3 * $plugin_body_width}" y2="{$y}" style="stroke:rgb({$atom_port_color});stroke-width:2"/>
       <svg:text x="{-10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black" style="text-anchor: end;">
         <xsl:value-of select="concat('(',$symbol,')')"/>
       </svg:text>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+ 
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
     </xsl:for-each>
 
@@ -416,7 +517,16 @@ embed screenshot as base64 string
         <xsl:value-of select="concat('(',$symbol,')')"/>
       </svg:text>
       <svg:text x="{10 + 2 * $plugin_body_width}" y="{$y - 5}" fill="black">
-        <xsl:value-of select="substring(concat(@index,') ',$name),1,$max_label_length)"/>
+ 
+<xsl:choose>
+<xsl:when test="(string-length($name)+1) &gt; $max_label_length">
+        <xsl:value-of select="concat(substring(concat(@index,') ',$name),1,$max_label_length),'...')"/>
+</xsl:when>
+<xsl:otherwise>
+        <xsl:value-of select="concat(@index,') ',$name)"/>
+</xsl:otherwise>
+</xsl:choose>
+
       </svg:text>
     </xsl:for-each>
   </xsl:template>
@@ -433,18 +543,21 @@ embed screenshot as base64 string
 
     <div class="port_box">
  
-<a href="#top_of_page">
-<div class="port_box_title">
+<a class="toplink" href="#top_of_page">^top</a>
+<div class="port_box_title_{@type}">
      <h3>
         <xsl:value-of select="concat(@index,') ',name)"/>
       </h3>
 </div>
-</a>
+
+<xsl:if test="doc">
+	<xsl:copy-of select="doc/*"/>
+</xsl:if>
 
 
 <table style="width:100%">
 <tr>
-<td style="width:50%;vertical-align:top;">
+<td style="width:50%;" class="top">
 
 
 <!--
@@ -482,10 +595,24 @@ embed screenshot as base64 string
 </xsl:if>
 -->
 
+      <xsl:if test="type">
+<h4>Types</h4>
+	<ul>
+	      <xsl:for-each select="type">
+		<xsl:sort order="ascending" data-type="text" select="."/>
+	<li>
+       		   <a href="{.}"><xsl:value-of select="substring-after(.,'#')"/></a>
+	</li>
+     		 </xsl:for-each>
+	</ul>
+	</xsl:if>
+
+
       <xsl:if test="property">
 <h4>Properties</h4>
 	<ul>
 	      <xsl:for-each select="property">
+		<xsl:sort order="ascending" data-type="text" select="."/>
 	<li>
        		   <a href="{.}"><xsl:value-of select="substring-after(.,'#')"/></a>
 	</li>
@@ -494,8 +621,9 @@ embed screenshot as base64 string
 	</xsl:if>
 
 </td>
-<td>
+<td class="top">
 
+<xsl:if test="minimum">
 <h4>Range</h4>
 <table class="key_value">
 <tr>
@@ -521,6 +649,21 @@ embed screenshot as base64 string
 	</td>
 </tr>
 </table>
+</xsl:if>
+
+
+
+      <xsl:if test="designation">
+<h4>Designation</h4>
+	<ul>
+	      <xsl:for-each select="designation">
+		<xsl:sort order="ascending" data-type="text" select="."/>
+	<li>
+       		   <a href="{.}"><xsl:value-of select="substring-after(.,'#')"/></a>
+	</li>
+     		 </xsl:for-each>
+	</ul>
+	</xsl:if>
 
 
 
@@ -532,10 +675,10 @@ embed screenshot as base64 string
 	  <xsl:sort order="ascending" data-type="number" select="@value"/>
 
 <tr>
-	<td style="vertical-align:top;">
+	<td class="top">
           <xsl:value-of select="@value"/>
 	</td>
-	<td class="right">
+	<td class="right top">
             <xsl:value-of select="."/>
 	</td>
 
