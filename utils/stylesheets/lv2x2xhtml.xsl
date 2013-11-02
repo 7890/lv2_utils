@@ -177,9 +177,9 @@ td.top {vertical-align:top;}
 
         <div style="float:left;margin-top:20px">
 
-          <svg xmlns="http://www.w3.org/2000/svg" width="{$svg_w}" height="{$svg_h}" version="1.1" viewbox="0 0 {$svg_w} {$svg_h}">
-
-        <svg:defs>
+          <svg xmlns="http://www.w3.org/2000/svg" width="{$svg_w}" height="{$svg_h}" version="1.1">
+   
+     <svg:defs>
 
 	<!-- rotate(..)-->
 	<xsl:variable name="icon_transform"></xsl:variable>
@@ -550,9 +550,11 @@ embed screenshot as base64 string
       </h3>
 </div>
 
-<xsl:if test="doc">
-	<xsl:copy-of select="doc/*"/>
-</xsl:if>
+<xsl:for-each select="doc/p">
+<p>
+	<xsl:value-of select="."/>
+</p>
+</xsl:for-each>
 
 
 <table style="width:100%">
