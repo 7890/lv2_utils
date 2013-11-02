@@ -44,12 +44,34 @@ then
 	exit
 fi
 
-echo -n "adding screenshot: "
-echo "$image_filename"
-echo -n "to               : "
-echo "$xml_filename"
+echo "trying to add screenshot image_filename"
+echo "to $xml_filename"
 
 tmpfile=`mktemp`
+
+#dont embed screenshot if > 100k
+find "$screenshots_dir/$image_filename" -size +100k | grep png
+ret=$?
+if [ $ret -ne 1 ]
+then
+
+echo "========"
+echo "SCREENSHOT WAS NOT ADDED (>100K)"
+echo "========"
+
+#replace (if any) screenshot
+xmlstarlet ed -d "//screenshot" \
+	-s "//lv2plugin" \
+	-t elem -n 'screenshot' \
+	-v "n/a" \
+	-i "//screenshot" \
+	-t attr -n 'encoding' -v "base64" \
+	-i "//screenshot" \
+	-t attr -n 'format' -v "png" \
+	 "$xml_dir"/"$xml_filename" > "$tmpfile"
+
+
+else
 
 #replace (if any) screenshot
 xmlstarlet ed -d "//screenshot" \
@@ -61,6 +83,8 @@ xmlstarlet ed -d "//screenshot" \
 	-i "//screenshot" \
 	-t attr -n 'format' -v "png" \
 	 "$xml_dir"/"$xml_filename" > "$tmpfile"
+
+fi
 
 xmlstarlet fo "$tmpfile" 2>&1 > /dev/null
 ret=$?
