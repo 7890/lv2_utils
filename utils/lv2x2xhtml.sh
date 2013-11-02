@@ -43,7 +43,8 @@ lv2xinfo "$1" | xmlstarlet fo - > "$outputdir"/"$filename".xml
 ./lv2add_doc.sh "$1"
 
 #create output xhtml file
-cat "$outputdir"/"$filename".xml | xmlstarlet tr "$stylesheet" - \
+cat "$outputdir"/"$filename".xml | xmlstarlet tr "$stylesheet" \
+	-s call_timestamp="`date -R`" - \
 	| xmlstarlet fo > "$outputdir"/"$filename".xhtml
 
 echo "resulting file:"
