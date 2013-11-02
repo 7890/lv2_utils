@@ -181,47 +181,65 @@ td.top {vertical-align:top;}
    
      <svg:defs>
 
-	<!-- rotate(..)-->
-	<xsl:variable name="icon_transform"></xsl:variable>
+		<!-- rotate(..)-->
+		<xsl:variable name="icon_transform"></xsl:variable>
 
+<xsl:if test="//port[@direction=1 and @type=2]">
                 <svg:image id="audio_port_in" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$audio_port_in_b64}"/>
+</xsl:if>
 
+<xsl:if test="//port[@direction=2 and @type=2]">
                 <svg:image id="audio_port_out" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$audio_port_out_b64}"/>
+</xsl:if>
 
-
+<xsl:if test="//port[@direction=1 and @type=3]">
                 <svg:image id="atom_port_in_generic" width="50" height="23" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$atom_port_in_generic_b64}"/>
 
+                <svg:image id="atom_port_in_midi" width="50" height="23" transform="{$icon_transform}"
+                xlink:href="data:image/svg+xml;base64,{$atom_port_in_midi_b64}"/>
+</xsl:if>
+
+<xsl:if test="//port[@direction=2 and @type=3]">
                 <svg:image id="atom_port_out_generic" width="50" height="23" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$atom_port_out_generic_b64}"/>
 
-                <svg:image id="atom_port_in_midi" width="50" height="23" transform="{$icon_transform}"
-                xlink:href="data:image/svg+xml;base64,{$atom_port_in_midi_b64}"/>
-
                 <svg:image id="atom_port_out_midi" width="50" height="23" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$atom_port_out_midi_b64}"/>
+</xsl:if>
 
-
+<xsl:if test="//port[@direction=1 and @type=1] and property = 'http://lv2plug.in/ns/lv2core#enumeration'">
                 <svg:image id="control_port_in_enumeration" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_enumeration_b64}"/>
+</xsl:if>
 
+<xsl:if test="//port[@direction=1 and @type=1 and property = 'http://lv2plug.in/ns/lv2core#toggled']">
                 <svg:image id="control_port_in_toggle" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_toggle_b64}"/>
+</xsl:if>
 
+<xsl:if test="//port[@direction=1 and @type=1]">
                 <svg:image id="control_port_in_float" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_in_float_b64}"/>
+</xsl:if>
 
-
+<xsl:if test="//port[@direction=2 and @type=1] and property = 'http://lv2plug.in/ns/lv2core#enumeration'">
                 <svg:image id="control_port_out_enumeration" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_enumeration_b64}"/>
+</xsl:if>
 
+<xsl:if test="//port[@direction=2 and @type=1 and property = 'http://lv2plug.in/ns/lv2core#toggled']">
                 <svg:image id="control_port_out_toggle" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_toggle_b64}"/>
+</xsl:if>
 
+<xsl:if test="//port[@direction=2 and @type=1]">
                 <svg:image id="control_port_out_float" width="50" height="24" transform="{$icon_transform}"
                 xlink:href="data:image/svg+xml;base64,{$control_port_out_float_b64}"/>
+</xsl:if>
+
 
         </svg:defs>
 
