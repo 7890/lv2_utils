@@ -59,17 +59,8 @@ echo "========"
 echo "SCREENSHOT WAS NOT ADDED (>100K)"
 echo "========"
 
-#replace (if any) screenshot
-xmlstarlet ed -d "//screenshot" \
-	-s "//lv2plugin" \
-	-t elem -n 'screenshot' \
-	-v "n/a" \
-	-i "//screenshot" \
-	-t attr -n 'encoding' -v "base64" \
-	-i "//screenshot" \
-	-t attr -n 'format' -v "png" \
-	 "$xml_dir"/"$xml_filename" > "$tmpfile"
-
+rm -f "$tmpfile"
+exit
 
 else
 
