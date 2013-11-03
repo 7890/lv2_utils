@@ -302,7 +302,7 @@ print_plugin(LilvWorld*        world,
 	LilvNodes* features = lilv_plugin_get_required_features(p);
 
 	LILV_FOREACH(nodes, i, features) {
-		printf("<required_feature>%s</required_feature>\n", lilv_node_as_uri(lilv_nodes_get(features, i)));
+		printf("<feature type=\"1\" uri=\"%s\"/>\n", lilv_node_as_uri(lilv_nodes_get(features, i)));
 	}
 	lilv_nodes_free(features);
 
@@ -310,7 +310,7 @@ print_plugin(LilvWorld*        world,
 
 	features = lilv_plugin_get_optional_features(p);
 	LILV_FOREACH(nodes, i, features) {
-		printf("<optional_feature>%s</optional_feature>\n", lilv_node_as_uri(lilv_nodes_get(features, i)));
+		printf("<feature type=\"2\" uri=\"%s\"/>\n", lilv_node_as_uri(lilv_nodes_get(features, i)));
 	}
 	lilv_nodes_free(features);
 
