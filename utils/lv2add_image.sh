@@ -44,8 +44,7 @@ then
 	exit
 fi
 
-echo "trying to add screenshot image_filename"
-echo "to $xml_filename"
+echo "trying to add screenshot"
 
 tmpfile=`mktemp`
 
@@ -64,18 +63,20 @@ exit
 
 else
 
-#replace (if any) screenshot
-xmlstarlet ed -d "//screenshot" \
-	-s "//lv2plugin" \
+#replace (if any) screenshot generic screenshot
+xmlstarlet ed -d "//lv2plugin[@uri='"$1"']/data/screenshot[@type=1]" \
+	-s "//lv2plugin/data" \
 	-t elem -n 'screenshot' \
 	-v "`base64 -w 100000 $screenshots_dir/$image_filename`" \
-	-i "//screenshot" \
+	-i "//lv2plugin[@uri='"$1"']/data/screenshot[position()=last()]" \
+	-t attr -n 'type' -v "1" \
+	-i "//lv2plugin[@uri='"$1"']/data/screenshot[position()=last()]" \
 	-t attr -n 'encoding' -v "base64" \
-	-i "//screenshot" \
+	-i "//lv2plugin[@uri='"$1"']/data/screenshot[position()=last()]" \
 	-t attr -n 'format' -v "png" \
 	 "$xml_dir"/"$xml_filename" > "$tmpfile"
-
 fi
+
 
 xmlstarlet fo "$tmpfile" 2>&1 > /dev/null
 ret=$?
@@ -88,4 +89,5 @@ then
 fi
 
 mv "$tmpfile" "$xml_dir"/"$xml_filename"
+ls -1 "$xml_dir"/"$xml_filename"
 echo "done."
