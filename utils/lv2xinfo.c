@@ -126,7 +126,7 @@ print_port(const LilvPlugin* p,
 
 	LILV_FOREACH(nodes, i, classes) {
 		const LilvNode* value = lilv_nodes_get(classes, i);
-		printf("<type>%s</type>\n", lilv_node_as_uri(value));
+		printf("<type uri=\"%s\"/>\n", lilv_node_as_uri(value));
 	}
 	
 	if (lilv_port_is_a(p, port, event_class)) {
@@ -135,7 +135,9 @@ print_port(const LilvPlugin* p,
 		if (lilv_nodes_size(supported) > 0) {
 			LILV_FOREACH(nodes, i, supported) {
 				const LilvNode* value = lilv_nodes_get(supported, i);
-				printf("<supported_event>%s</supported_event>\n", lilv_node_as_uri(value));
+				//printf("<supported_event uri=\"%s\"/>\n", lilv_node_as_uri(value));
+				//print as regular property
+				printf("<property uri=\"%s\"/>\n", lilv_node_as_uri(value));
 			}
 		}
 		lilv_nodes_free(supported);
@@ -158,7 +160,7 @@ print_port(const LilvPlugin* p,
 
 	LilvNodes* designations = lilv_port_get_value(p, port, designation_pred);
 	if (lilv_nodes_size(designations) > 0) {
-		printf("<designation>%s</designation>\n",lilv_node_as_string(lilv_nodes_get_first(designations)));
+		printf("<designation uri=\"%s\"/>\n",lilv_node_as_string(lilv_nodes_get_first(designations)));
 	}
 	lilv_nodes_free(designations);
 
@@ -175,7 +177,7 @@ print_port(const LilvPlugin* p,
 	LilvNodes* properties = lilv_port_get_properties(p, port);
 
 	LILV_FOREACH(nodes, i, properties) {
-		printf("<property>%s</property>\n", lilv_node_as_uri(lilv_nodes_get(properties, i)));
+		printf("<property uri=\"%s\"/>\n", lilv_node_as_uri(lilv_nodes_get(properties, i)));
 	}
 	lilv_nodes_free(properties);
 
@@ -210,10 +212,8 @@ print_plugin(LilvWorld*        world,
 	printf("<?xml version=\"1.0\"?>\n");
 	//printf("<?xml-stylesheet href=\"lv2x2xhtml.xsl\" type=\"text/xsl\"?>\n");
 
-	printf("<lv2plugin>\n");
+	printf("<lv2plugin uri=\"%s\">\n",lilv_node_as_uri(lilv_plugin_get_uri(p)));
 	printf("<meta>\n");
-
-	printf("<uri>%s</uri>\n", lilv_node_as_uri(lilv_plugin_get_uri(p)));
 
 	val = lilv_plugin_get_name(p);
 	if (val) {
@@ -266,11 +266,10 @@ print_plugin(LilvWorld*        world,
 
 	LilvUIs* uis = lilv_plugin_get_uis(p);
 	if (lilv_nodes_size(uis) > 0) {
-		printf("<userinterface>\n");
-
 		LILV_FOREACH(uis, i, uis) {
 			const LilvUI* ui = lilv_uis_get(uis, i);
-			printf("<uri>%s</uri>\n", lilv_node_as_uri(lilv_ui_get_uri(ui)));
+
+			printf("<userinterface uri=\"%s\">\n",lilv_node_as_uri(lilv_ui_get_uri(ui)));
 
 			const char* binary = lilv_node_as_uri(lilv_ui_get_binary_uri(ui));
 
@@ -285,9 +284,8 @@ print_plugin(LilvWorld*        world,
 			{
 				printf("<binary>%s</binary>\n", binary);
 			}
-
+			printf("</userinterface>\n");
 		}
-		printf("</userinterface>\n");
 	}
 	lilv_uis_free(uis);
 
@@ -358,6 +356,7 @@ print_plugin(LilvWorld*        world,
 		print_port(p, i, mins, maxes, defaults);
 
 
+	printf("<data></data>\n");
 	printf("</lv2plugin>\n");
 
 	free(mins);
