@@ -29,12 +29,14 @@ mkdir -p "$outputdir"
 
 filename=`echo "$1" | sed 's/:/_/g' | sed 's/\//_/g' | sed 's/#/_/g'`
 
+echo "==================================="
 echo "creating xml file for plugin"
 echo "$1"
-echo ""
 
 #create generic xml plugin description
 lv2xinfo "$1" | xmlstarlet fo - > "$outputdir"/"$filename".xml
+
+ls -1 "$outputdir"/"$filename".xml
 
 #add screenshot as base64 encoded string (if available)
 ./lv2add_image.sh "$1"
