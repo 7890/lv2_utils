@@ -284,7 +284,7 @@ embed screenshot as base64 string
 <ul>
 	  <xsl:for-each select="//lv2plugin/meta/feature[@type=1]">
 	<li>
-<a href="{@uri}" alt="{@uri}"><xsl:value-of select="@uri"/></a>
+<a href="{@uri}"><xsl:value-of select="@uri"/></a>
 	</li>
 	  </xsl:for-each>
 </ul>
@@ -296,7 +296,7 @@ embed screenshot as base64 string
 <ul>
 	  <xsl:for-each select="//lv2plugin/meta/feature[@type=2]">
 	<li>
-<a href="{@uri}" alt="{@uri}"><xsl:value-of select="@uri"/></a>
+<a href="{@uri}"><xsl:value-of select="@uri"/></a>
 	</li>
 	  </xsl:for-each>
 </ul>
