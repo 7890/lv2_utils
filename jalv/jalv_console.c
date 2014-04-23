@@ -35,6 +35,7 @@ print_usage(const char* name, bool error)
 	fprintf(os, "  -l DIR       Load state from save directory\n");
 	fprintf(os, "  -d DIR       Dump plugin <=> UI communication\n");
 	fprintf(os, "  -b SIZE      Buffer size for plugin <=> UI communication\n");
+	fprintf(os, "  -c SYM=VAL   set initial control values (multiple -c possible)\n");
 	fprintf(os, "  -C NAME      preferred jack client name\n");
 
 	return error ? 1 : 0;
