@@ -92,14 +92,18 @@ jalv_init(int* argc, char*** argv, JalvOptions* opts)
 		  "Dump plugin <=> UI communication", NULL },
 		{ "show-hidden", 's', 0, G_OPTION_ARG_NONE, &opts->show_hidden,
 		  "Show controls for ports with notOnGUI property on generic UI", NULL },
+		{ "no-menu", 'n', 0, G_OPTION_ARG_NONE, &opts->no_menu,
+		  "Do not show Jalv menu on window", NULL },
 		{ "generic-ui", 'g', 0, G_OPTION_ARG_NONE, &opts->generic_ui,
 		  "Use Jalv generic UI and not the plugin UI", NULL},
 		{ "buffer-size", 'b', 0, G_OPTION_ARG_INT, &opts->buffer_size,
 		  "Buffer size for plugin <=> UI communication", "SIZE"},
 		{ "update-frequency", 'r', 0, G_OPTION_ARG_DOUBLE, &opts->update_rate,
 		  "UI update frequency", NULL},
-		{ "jack-client-name", 'c', 0, G_OPTION_ARG_STRING, &opts->preferred_jack_client_name,
+		{ "jack-client-name", 'C', 0, G_OPTION_ARG_STRING, &opts->preferred_jack_client_name,
 		  "JACK client name", "name" },
+		{ "control", 'c', 0, G_OPTION_ARG_STRING_ARRAY, &opts->controls,
+		  "UI update frequency", NULL},
 		{ 0, 0, 0, 0, 0, 0, 0 } };
 	GError* error = NULL;
 	const int err = gtk_init_with_args(
@@ -177,59 +181,6 @@ symbolify(const char* in)
 }
 
 static void
-on_save_preset_activate(GtkWidget* widget, void* ptr)
-{
-	Jalv* jalv = (Jalv*)ptr;
-
-	GtkWidget* dialog = gtk_file_chooser_dialog_new(
-		"Save Preset",
-		(GtkWindow*)jalv->window,
-		GTK_FILE_CHOOSER_ACTION_SAVE,
-		GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT,
-		GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
-		NULL);
-
-	char* dot_lv2 = g_build_filename(g_get_home_dir(), ".lv2", NULL);
-	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), dot_lv2);
-	free(dot_lv2);
-
-	GtkWidget* content   = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	GtkBox*    box       = GTK_BOX(new_box(true, 8));
-	GtkWidget* uri_label = gtk_label_new("URI (Optional):");
-	GtkWidget* uri_entry = gtk_entry_new();
-
-	gtk_box_pack_start(box, uri_label, FALSE, TRUE, 2);
-	gtk_box_pack_start(box, uri_entry, TRUE, TRUE, 2);
-	gtk_box_pack_start(GTK_BOX(content), GTK_WIDGET(box), FALSE, FALSE, 6);
-
-	gtk_widget_show_all(GTK_WIDGET(dialog));
-	gtk_entry_set_activates_default(GTK_ENTRY(uri_entry), TRUE);
-	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
-	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-		const char* path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-		const char* uri  = gtk_entry_get_text(GTK_ENTRY(uri_entry));
-
-		char* dirname  = g_path_get_dirname(path);
-		char* basename = g_path_get_basename(path);
-		char* sym      = symbolify(basename);
-		char* bundle   = g_strjoin(NULL, sym, ".lv2", NULL);
-		char* file     = g_strjoin(NULL, sym, ".ttl", NULL);
-		char* dir      = g_build_filename(dirname, bundle, NULL);
-
-		jalv_save_preset(jalv, dir, (strlen(uri) ? uri : NULL), basename, file);
-
-		g_free(dir);
-		g_free(file);
-		g_free(bundle);
-		free(sym);
-		g_free(basename);
-		g_free(dirname);
-	}
-
-	gtk_widget_destroy(GTK_WIDGET(dialog));
-}
-
-static void
 on_preset_activate(GtkWidget* widget, gpointer data)
 {
 	PresetRecord* record = (PresetRecord*)data;
@@ -267,6 +218,75 @@ add_preset_to_menu(Jalv*           jalv,
 	return 0;
 }
 
+static void
+on_save_preset_activate(GtkWidget* widget, void* ptr)
+{
+	Jalv* jalv = (Jalv*)ptr;
+
+	GtkWidget* dialog = gtk_file_chooser_dialog_new(
+		"Save Preset",
+		(GtkWindow*)jalv->window,
+		GTK_FILE_CHOOSER_ACTION_SAVE,
+		GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT,
+		GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
+		NULL);
+
+	char* dot_lv2 = g_build_filename(g_get_home_dir(), ".lv2", NULL);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), dot_lv2);
+	free(dot_lv2);
+
+	GtkWidget* content   = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	GtkBox*    box       = GTK_BOX(new_box(true, 8));
+	GtkWidget* uri_label = gtk_label_new("URI (Optional):");
+	GtkWidget* uri_entry = gtk_entry_new();
+
+	gtk_box_pack_start(box, uri_label, FALSE, TRUE, 2);
+	gtk_box_pack_start(box, uri_entry, TRUE, TRUE, 2);
+	gtk_box_pack_start(GTK_BOX(content), GTK_WIDGET(box), FALSE, FALSE, 6);
+
+	gtk_widget_show_all(GTK_WIDGET(dialog));
+	gtk_entry_set_activates_default(GTK_ENTRY(uri_entry), TRUE);
+	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		const char* path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		const char* uri  = gtk_entry_get_text(GTK_ENTRY(uri_entry));
+
+		char* dirname  = g_path_get_dirname(path);
+		char* basename = g_path_get_basename(path);
+		char* sym      = symbolify(basename);
+		char* bundle   = g_strjoin(NULL, sym, ".lv2/", NULL);
+		char* file     = g_strjoin(NULL, sym, ".ttl", NULL);
+		char* dir      = g_build_filename(dirname, bundle, NULL);
+
+		jalv_save_preset(jalv, dir, (strlen(uri) ? uri : NULL), basename, file);
+
+		// Load preset so it is now known to LilvWorld
+		SerdNode  sdir = serd_node_new_file_uri((const uint8_t*)dir, 0, 0, 0);
+		LilvNode* ldir = lilv_new_uri(jalv->world, (const char*)sdir.buf);
+		lilv_world_load_bundle(jalv->world, ldir);
+		serd_node_free(&sdir);
+		lilv_node_free(ldir);
+
+		// Rebuild preset menu
+		GtkContainer* pset_menu = GTK_CONTAINER(gtk_widget_get_parent(widget));
+		GList*        items     = gtk_container_get_children(pset_menu);
+		for (items = items->next; items; items = items->next) {
+			gtk_container_remove(pset_menu, items->data);
+		}
+		jalv_load_presets(jalv, add_preset_to_menu, pset_menu);
+		gtk_widget_show_all(GTK_WIDGET(pset_menu));
+
+		g_free(dir);
+		g_free(file);
+		g_free(bundle);
+		free(sym);
+		g_free(basename);
+		g_free(dirname);
+	}
+
+	gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
 void
 jalv_ui_port_event(Jalv*       jalv,
                    uint32_t    port_index,
@@ -281,7 +301,7 @@ jalv_ui_port_event(Jalv*       jalv,
 
 	if (controller->spin) {
 		gtk_spin_button_set_value(GTK_SPIN_BUTTON(controller->spin),
-		                          *(float*)buffer);
+		                          *(const float*)buffer);
 	}
 
 	GtkWidget* widget = controller->control;
@@ -294,7 +314,7 @@ jalv_ui_port_event(Jalv*       jalv,
 			gtk_tree_model_get_value(model, &i, 0, &value);
 			const double v = g_value_get_double(&value);
 			g_value_unset(&value);
-			if (fabs(v - *(float*)buffer) < FLT_EPSILON) {
+			if (fabs(v - *(const float*)buffer) < FLT_EPSILON) {
 				gtk_combo_box_set_active_iter(GTK_COMBO_BOX(widget), &i);
 				return;
 			}
@@ -302,9 +322,9 @@ jalv_ui_port_event(Jalv*       jalv,
 		}
 	} else if (GTK_IS_TOGGLE_BUTTON(widget)) {
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
-		                             *(float*)buffer > 0.0f);
+		                             *(const float*)buffer > 0.0f);
 	} else if (GTK_IS_RANGE(widget)) {
-		gtk_range_set_value(GTK_RANGE(widget), *(float*)buffer); 
+		gtk_range_set_value(GTK_RANGE(widget), *(const float*)buffer); 
 	} else {
 		fprintf(stderr, "Unknown widget type for port %d\n", port_index);
 	}
@@ -390,10 +410,10 @@ file_changed(GtkFileChooserButton* widget,
 	uint8_t              buf[1024];
 	lv2_atom_forge_set_buffer(&forge, buf, sizeof(buf));
 
-	lv2_atom_forge_blank(&forge, &frame, 1, jalv->urids.patch_Set);
-	lv2_atom_forge_property_head(&forge, jalv->urids.patch_property, 0);
+	lv2_atom_forge_object(&forge, &frame, 0, jalv->urids.patch_Set);
+	lv2_atom_forge_key(&forge, jalv->urids.patch_property);
 	lv2_atom_forge_urid(&forge, jalv->map.map(jalv, property));
-	lv2_atom_forge_property_head(&forge, jalv->urids.patch_value, 0);
+	lv2_atom_forge_key(&forge, jalv->urids.patch_value);
 	lv2_atom_forge_path(&forge, filename, strlen(filename));
 
 	const LV2_Atom* atom = lv2_atom_forge_deref(&forge, frame.ref);
@@ -407,16 +427,16 @@ file_changed(GtkFileChooserButton* widget,
 static gint
 dcmp(gconstpointer a, gconstpointer b)
 {
-	double y = *(double*)a;
-	double z = *(double*)b;
+	double y = *(const double*)a;
+	double z = *(const double*)b;
 	return y < z ? -1 : z < y ? 1 : 0;
 }
 
 static gint
 drcmp(gconstpointer a, gconstpointer b)
 {
-	double y = *(double*)a;
-	double z = *(double*)b;
+	double y = *(const double*)a;
+	double z = *(const double*)b;
 	return y < z ? 1 : z < y ? -1 : 0;
 }
 
@@ -762,21 +782,9 @@ build_control_widget(Jalv* jalv, GtkWidget* window)
 	}
 }
 
-int
-jalv_open_ui(Jalv* jalv)
+static void
+build_menu(Jalv* jalv, GtkWidget* window, GtkWidget* vbox)
 {
-	GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	jalv->window = window;
-	jalv->has_ui = TRUE;
-
-	g_signal_connect(window, "destroy",
-	                 G_CALLBACK(on_window_destroy), jalv);
-
-	LilvNode* name = lilv_plugin_get_name(jalv->plugin);
-	gtk_window_set_title(GTK_WINDOW(window), lilv_node_as_string(name));
-	lilv_node_free(name);
-
-	GtkWidget* vbox      = new_box(false, 0);
 	GtkWidget* menu_bar  = gtk_menu_bar_new();
 	GtkWidget* file      = gtk_menu_item_new_with_mnemonic("_File");
 	GtkWidget* file_menu = gtk_menu_new();
@@ -804,10 +812,6 @@ jalv_open_ui(Jalv* jalv)
 
 	jalv_load_presets(jalv, add_preset_to_menu, presets_menu);
 
-	gtk_window_set_role(GTK_WINDOW(window), "plugin_ui");
-	gtk_container_add(GTK_CONTAINER(window), vbox);
-	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
-
 	g_signal_connect(G_OBJECT(quit), "activate",
 	                 G_CALLBACK(on_quit_activate), window);
 
@@ -816,6 +820,31 @@ jalv_open_ui(Jalv* jalv)
 
 	g_signal_connect(G_OBJECT(save_preset), "activate",
 	                 G_CALLBACK(on_save_preset_activate), jalv);
+
+	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
+}
+
+int
+jalv_open_ui(Jalv* jalv)
+{
+	GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	jalv->window = window;
+	jalv->has_ui = TRUE;
+
+	g_signal_connect(window, "destroy",
+	                 G_CALLBACK(on_window_destroy), jalv);
+
+	LilvNode* name = lilv_plugin_get_name(jalv->plugin);
+	gtk_window_set_title(GTK_WINDOW(window), lilv_node_as_string(name));
+	lilv_node_free(name);
+
+	GtkWidget* vbox = new_box(false, 0);
+	gtk_window_set_role(GTK_WINDOW(window), "plugin_ui");
+	gtk_container_add(GTK_CONTAINER(window), vbox);
+
+	if (!jalv->opts.no_menu) {
+		build_menu(jalv, window, vbox);
+	}
 
 	/* Create/show alignment to contain UI (whether custom or generic) */
 	GtkWidget* alignment = gtk_alignment_new(0.5, 0.5, 1.0, 1.0);

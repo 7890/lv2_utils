@@ -14,9 +14,6 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-//tb/131104
-//add jack client name command line option
-
 #define _POSIX_C_SOURCE 200809L  /* for mkdtemp */
 #define _DARWIN_C_SOURCE /* for mkdtemp on OSX */
 #include <assert.h>
@@ -25,6 +22,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+//tb/131104
+//add jack client name command line option
+
+//tb/140422
+#include <lo/lo.h>
+
 
 #ifndef __cplusplus
 #    include <stdbool.h>
@@ -46,6 +50,9 @@
 #include <jack/midiport.h>
 #ifdef JALV_JACK_SESSION
 #    include <jack/session.h>
+#endif
+#ifdef HAVE_JACK_METADATA
+#    include <jack/metadata.h>
 #endif
 
 #include "lv2/lv2plug.in/ns/ext/atom/atom.h"
@@ -96,6 +103,31 @@
 #define N_BUFFER_CYCLES 16
 
 ZixSem exit_sem;  /**< Exit semaphore */
+
+////for osc support
+lo_server_thread lo_st;
+char * default_port="3366";
+jack_port_t *port_in;
+void* buffer_in;
+int msgCount=0;
+char* path;
+char* types;
+
+//send osc directly to jalv client
+//will need facility to set network port for multiple instances, off for now
+int start_osc_server=0;
+
+//use jack_osc_bridge_in (see http://github.com/7890/jack_tools/) and connect 
+//port "midi_osc_output" to jalv client port "midi_osc_input"
+//and send osc message to jack_osc_bridge_in
+//jalv client understands messages in the format
+//	/lv2control sf "symbolname" 0.0
+//lv2info <plugin uri> shows available control ports and value ranges
+int start_midi_osc_in=1;
+
+Jalv jalv;
+
+static bool jalv_apply_control_arg_(const char* sym, float f);
 
 static LV2_URID
 map_uri(LV2_URID_Map_Handle handle,
@@ -206,10 +238,6 @@ create_port(Jalv*    jalv,
 	port->control   = 0.0f;
 	port->flow      = FLOW_UNKNOWN;
 
-	/* Get the port symbol for console printing */
-	const LilvNode* symbol = lilv_port_get_symbol(jalv->plugin,
-	                                              port->lilv_port);
-
 	const bool optional = lilv_port_has_property(
 		jalv->plugin, port->lilv_port, jalv->nodes.lv2_connectionOptional);
 
@@ -251,9 +279,11 @@ create_port(Jalv*    jalv,
 	}
 	lilv_node_free(min_size);
 
-	const size_t sym_len = strlen(lilv_node_as_string(symbol));
-	if (sym_len > jalv->longest_sym) {
-		jalv->longest_sym = sym_len;
+	/* Update longest symbol for aligned console printing */
+	const LilvNode* sym = lilv_port_get_symbol(jalv->plugin, port->lilv_port);
+	const size_t    len = strlen(lilv_node_as_string(sym));
+	if (len > jalv->longest_sym) {
+		jalv->longest_sym = len;
 	}
 }
 
@@ -341,10 +371,7 @@ activate_port(Jalv*    jalv,
 {
 	struct Port* const port = &jalv->ports[port_index];
 
-	/* Get the port symbol for console printing */
-	const LilvNode* symbol = lilv_port_get_symbol(jalv->plugin,
-	                                              port->lilv_port);
-	const char* symbol_str = lilv_node_as_string(symbol);
+	const LilvNode* sym = lilv_port_get_symbol(jalv->plugin, port->lilv_port);
 
 	/* Connect unsupported ports to NULL (known to be optional by this point) */
 	if (port->flow == FLOW_UNKNOWN || port->type == TYPE_UNKNOWN) {
@@ -360,23 +387,36 @@ activate_port(Jalv*    jalv,
 	/* Connect the port based on its type */
 	switch (port->type) {
 	case TYPE_CONTROL:
-		printf("%-*s = %f\n", jalv->longest_sym, symbol_str,
+		printf("%-*s = %f\n", jalv->longest_sym, lilv_node_as_string(sym),
 		       jalv->ports[port_index].control);
 		lilv_instance_connect_port(jalv->instance, port_index, &port->control);
 		break;
 	case TYPE_AUDIO:
 		port->jack_port = jack_port_register(
-			jalv->jack_client, symbol_str,
+			jalv->jack_client, lilv_node_as_string(sym),
 			JACK_DEFAULT_AUDIO_TYPE, jack_flags, 0);
 		break;
 	case TYPE_EVENT:
-		port->jack_port = jack_port_register(
-			jalv->jack_client, symbol_str,
-			JACK_DEFAULT_MIDI_TYPE, jack_flags, 0);
+		if (lilv_port_supports_event(
+			    jalv->plugin, port->lilv_port, jalv->nodes.midi_MidiEvent)) {
+			port->jack_port = jack_port_register(
+				jalv->jack_client, lilv_node_as_string(sym),
+				JACK_DEFAULT_MIDI_TYPE, jack_flags, 0);
+		}
 		break;
 	default:
 		break;
 	}
+
+#ifdef HAVE_JACK_METADATA
+	if (port->jack_port) {
+		LilvNode* name = lilv_port_get_name(jalv->plugin, port->lilv_port);
+		jack_set_property(
+			jalv->jack_client, jack_port_uuid(port->jack_port),
+			JACK_METADATA_PRETTY_NAME, lilv_node_as_string(name), NULL);
+		lilv_node_free(name);
+	}
+#endif
 }
 
 /** Jack buffer size callback. */
@@ -400,10 +440,54 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 {
 	Jalv* const jalv = (Jalv*)data;
 
+	if(start_midi_osc_in==1)
+	{
+		buffer_in = jack_port_get_buffer(port_in, jalv->block_length);
+		msgCount = jack_midi_get_event_count (buffer_in);
+
+		int i;
+		//iterate over encapsulated osc messages
+		for (i = 0; i < msgCount; ++i) 
+		{
+			jack_midi_event_t event;
+			int r = jack_midi_event_get (&event, buffer_in, i);
+			if (r == 0)
+			{
+				path=lo_get_path(event.buffer,event.size);
+
+				//accept messages in the form /lv2control sf "symbolName" 0.0
+				if(strcmp(path,"/lv2control"))
+				{
+					break;
+				}
+
+				int result;
+				lo_message msg = lo_message_deserialise(event.buffer, event.size, &result);
+
+				types=lo_message_get_types(msg);
+
+				//check types
+				if(strcmp(types,"sf"))
+				{
+					lo_message_free(msg);
+					break;
+				}
+
+				lo_arg **argv = lo_message_get_argv(msg);
+
+				printf("midi osc control input: %s=%f\n",&argv[0]->s,argv[1]->f);
+
+				jalv_apply_control_arg_(&argv[0]->s, argv[1]->f);
+
+				lo_message_free(msg);
+			}
+		}
+	}//end if start_midi_osc_in
+
 	/* Get Jack transport position */
 	jack_position_t pos;
 	const bool rolling = (jack_transport_query(jalv->jack_client, &pos)
-	                      == JackTransportRolling);
+			      == JackTransportRolling);
 
 	/* If transport state is not as expected, then something has changed */
 	const bool xport_changed = (rolling != jalv->rolling ||
@@ -417,22 +501,22 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 		lv2_atom_forge_set_buffer(&jalv->forge, pos_buf, sizeof(pos_buf));
 		LV2_Atom_Forge*      forge = &jalv->forge;
 		LV2_Atom_Forge_Frame frame;
-		lv2_atom_forge_blank(forge, &frame, 1, jalv->urids.time_Position);
-		lv2_atom_forge_property_head(forge, jalv->urids.time_frame, 0);
+		lv2_atom_forge_object(forge, &frame, 0, jalv->urids.time_Position);
+		lv2_atom_forge_key(forge, jalv->urids.time_frame);
 		lv2_atom_forge_long(forge, pos.frame);
-		lv2_atom_forge_property_head(forge, jalv->urids.time_speed, 0);
+		lv2_atom_forge_key(forge, jalv->urids.time_speed);
 		lv2_atom_forge_float(forge, rolling ? 1.0 : 0.0);
 		if (pos.valid & JackPositionBBT) {
-			lv2_atom_forge_property_head(forge, jalv->urids.time_barBeat, 0);
+			lv2_atom_forge_key(forge, jalv->urids.time_barBeat);
 			lv2_atom_forge_float(
 				forge, pos.beat - 1 + (pos.tick / pos.ticks_per_beat));
-			lv2_atom_forge_property_head(forge, jalv->urids.time_bar, 0);
+			lv2_atom_forge_key(forge, jalv->urids.time_bar);
 			lv2_atom_forge_long(forge, pos.bar - 1);
-			lv2_atom_forge_property_head(forge, jalv->urids.time_beatUnit, 0);
+			lv2_atom_forge_key(forge, jalv->urids.time_beatUnit);
 			lv2_atom_forge_int(forge, pos.beat_type);
-			lv2_atom_forge_property_head(forge, jalv->urids.time_beatsPerBar, 0);
+			lv2_atom_forge_key(forge, jalv->urids.time_beatsPerBar);
 			lv2_atom_forge_float(forge, pos.beats_per_bar);
-			lv2_atom_forge_property_head(forge, jalv->urids.time_beatsPerMinute, 0);
+			lv2_atom_forge_key(forge, jalv->urids.time_beatsPerMinute);
 			lv2_atom_forge_float(forge, pos.beats_per_minute);
 		}
 
@@ -475,10 +559,7 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 	/* Prepare port buffers */
 	for (uint32_t p = 0; p < jalv->num_ports; ++p) {
 		struct Port* port = &jalv->ports[p];
-		if (!port->jack_port)
-			continue;
-
-		if (port->type == TYPE_AUDIO) {
+		if (port->type == TYPE_AUDIO && port->jack_port) {
 			/* Connect plugin port directly to Jack port buffer */
 			lilv_instance_connect_port(
 				jalv->instance, p,
@@ -495,15 +576,17 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 					lv2_pos->type, lv2_pos->size, LV2_ATOM_BODY(lv2_pos));
 			}
 
-			/* Write Jack MIDI input */
-			void* buf = jack_port_get_buffer(port->jack_port, nframes);
-			for (uint32_t i = 0; i < jack_midi_get_event_count(buf); ++i) {
-				jack_midi_event_t ev;
-				jack_midi_event_get(&ev, buf, i);
-				lv2_evbuf_write(&iter,
-				                ev.time, 0,
-				                jalv->midi_event_id,
-				                ev.size, ev.buffer);
+			if (port->jack_port) {
+				/* Write Jack MIDI input */
+				void* buf = jack_port_get_buffer(port->jack_port, nframes);
+				for (uint32_t i = 0; i < jack_midi_get_event_count(buf); ++i) {
+					jack_midi_event_t ev;
+					jack_midi_event_get(&ev, buf, i);
+					lv2_evbuf_write(&iter,
+						        ev.time, 0,
+					                jalv->midi_event_id,
+					                ev.size, ev.buffer);
+				}
 			}
 		} else if (port->type == TYPE_EVENT) {
 			/* Clear event output for plugin to write to */
@@ -527,11 +610,18 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 			if (ev.protocol == 0) {
 				assert(ev.size == sizeof(float));
 				port->control = *(float*)body;
+
+
+			LilvNode* name = lilv_port_get_symbol(jalv->plugin, port->lilv_port);
+			char* pname=lilv_node_as_string(name);
+			printf("control change on port: %s index: %d value: %f\n",pname,ev.index,*(float*)body);
+
+
 			} else if (ev.protocol == jalv->urids.atom_eventTransfer) {
 				LV2_Evbuf_Iterator    e    = lv2_evbuf_end(port->evbuf);
 				const LV2_Atom* const atom = (const LV2_Atom*)body;
-				lv2_evbuf_write(&e, nframes, 0,
-				                atom->type, atom->size, LV2_ATOM_BODY(atom));
+				lv2_evbuf_write(&e, nframes, 0, atom->type, atom->size,
+					        LV2_ATOM_BODY_CONST(atom));
 			} else {
 				fprintf(stderr, "error: Unknown control change protocol %d\n",
 				        ev.protocol);
@@ -562,10 +652,12 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 	/* Deliver MIDI output and UI events */
 	for (uint32_t p = 0; p < jalv->num_ports; ++p) {
 		struct Port* const port = &jalv->ports[p];
-		if (port->jack_port && port->flow == FLOW_OUTPUT
-		    && port->type == TYPE_EVENT) {
-			void* buf = jack_port_get_buffer(port->jack_port, nframes);
-			jack_midi_clear_buffer(buf);
+		if (port->flow == FLOW_OUTPUT && port->type == TYPE_EVENT) {
+			void* buf = NULL;
+			if (port->jack_port) {
+				buf = jack_port_get_buffer(port->jack_port, nframes);
+				jack_midi_clear_buffer(buf);
+			}
 
 			for (LV2_Evbuf_Iterator i = lv2_evbuf_begin(port->evbuf);
 			     lv2_evbuf_is_valid(i);
@@ -573,11 +665,8 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 				uint32_t frames, subframes, type, size;
 				uint8_t* body;
 				lv2_evbuf_get(i, &frames, &subframes, &type, &size, &body);
-				if (type == jalv->midi_event_id) {
+				if (buf && type == jalv->midi_event_id) {
 					jack_midi_event_write(buf, frames, body, size);
-
-printf("here midi\n");
-
 				}
 
 				/* TODO: Be more disciminate about what to send */
@@ -739,7 +828,7 @@ jalv_ui_write(SuilController controller,
 		const LV2_Atom* atom = (const LV2_Atom*)buffer;
 		char*           str  = sratom_to_turtle(
 			jalv->sratom, &jalv->unmap, "jalv:", NULL, NULL,
-			atom->type, atom->size, LV2_ATOM_BODY(atom));
+			atom->type, atom->size, LV2_ATOM_BODY_CONST(atom));
 		printf("\n## UI => Plugin (%u bytes) ##\n%s\n", atom->size, str);
 		free(str);
 	}
@@ -801,16 +890,72 @@ jalv_emit_ui_events(Jalv* jalv)
 	return true;
 }
 
+static bool
+jalv_apply_control_arg_(const char* sym, float f)
+{
+	struct Port* port = jalv_port_by_symbol(&jalv, sym);
+	if (!port) {
+		fprintf(stderr, "warning: Ignoring value for unknown port `%s'\n", sym);
+		return false;
+	}
+
+	port->control = f;
+	return true;
+}
+
+static bool
+jalv_apply_control_arg(Jalv* jalv, const char* s)
+{
+	char  sym[256];
+	float val = 0.0f;
+	if (sscanf(s, "%[^=]=%f", sym, &val) != 2) {
+		fprintf(stderr, "warning: Ignoring invalid value `%s'\n", s);
+		return false;
+	}
+	
+	struct Port* port = jalv_port_by_symbol(jalv, sym);
+	if (!port) {
+		fprintf(stderr, "warning: Ignoring value for unknown port `%s'\n", sym);
+		return false;
+	}
+
+	port->control = val;
+	return true;
+}
+
 static void
 signal_handler(int ignored)
 {
 	zix_sem_post(&exit_sem);
 }
 
+////
+int default_msg_handler(const char *path, const char *types, lo_arg **argv, int argc,
+        void *data, void *user_data)
+{
+//	printf("handler called\n");
+
+	//accept messages in the form /lv2control sf "symbolName" 0.0
+	if(strcmp(path,"/lv2control"))
+	{
+		return 0;
+	}
+	//check types
+	if(strcmp(types,"sf"))
+	{
+		return 0;
+	}
+	printf("osc control input: %s=%f\n",&argv[0]->s,argv[1]->f);
+
+	jalv_apply_control_arg_(&argv[0]->s, argv[1]->f);
+
+	return 0;
+}
+
 int
 main(int argc, char** argv)
 {
-	Jalv jalv;
+//	Jalv jalv;
 	memset(&jalv, '\0', sizeof(Jalv));
 	jalv.prog_name     = argv[0];
 	jalv.block_length  = 4096;  // Should be set by jack_buffer_size_cb
@@ -1029,8 +1174,6 @@ main(int argc, char** argv)
 
 	/* Truncate plugin name to suit JACK (if necessary) */
 	char* jack_name = NULL;
-
-
 	if (strlen(name_str) >= (unsigned)jack_client_name_size() - 1) {
 		jack_name = (char*)calloc(jack_client_name_size(), 1);
 		strncpy(jack_name, name_str, jack_client_name_size() - 1);
@@ -1112,21 +1255,6 @@ main(int argc, char** argv)
 	
 	options_feature.data = &options;
 
-	if (!jalv.opts.update_rate) {
-		/* Calculate theoretical UI update frequency. */
-		jalv.ui_update_hz = (double)jalv.sample_rate / jalv.midi_buf_size * 2.0;
-		jalv.ui_update_hz = MAX(25, jalv.ui_update_hz);
-	} else {
-		jalv.ui_update_hz = jalv.opts.update_rate;
-		jalv.ui_update_hz = MAX(1, jalv.ui_update_hz);
-	}
-
-	/* The UI can only go so fast, clamp to reasonable limits */
-	jalv.ui_update_hz     = MIN(100, jalv.ui_update_hz);
-	jalv.opts.buffer_size = MAX(4096, jalv.opts.buffer_size);
-	fprintf(stderr, "Comm buffers: %d bytes\n", jalv.opts.buffer_size);
-	fprintf(stderr, "Update rate:  %d Hz\n", jalv.ui_update_hz);
-
 	/* Create Plugin <=> UI communication buffers */
 	jalv.ui_events     = jack_ringbuffer_create(jalv.opts.buffer_size);
 	jalv.plugin_events = jack_ringbuffer_create(jalv.opts.buffer_size);
@@ -1150,13 +1278,19 @@ main(int argc, char** argv)
 	    && lilv_plugin_has_extension_data(jalv.plugin, jalv.nodes.work_interface)) {
 		jalv_worker_init(
 			&jalv, &jalv.worker,
-			(LV2_Worker_Interface*)lilv_instance_get_extension_data(
+			(const LV2_Worker_Interface*)lilv_instance_get_extension_data(
 				jalv.instance, LV2_WORKER__interface));
 	}
 
 	/* Apply loaded state to plugin instance if necessary */
 	if (state) {
 		jalv_apply_state(&jalv, state);
+	}
+
+	if (jalv.opts.controls) {
+		for (char** c = jalv.opts.controls; *c; ++c) {
+			jalv_apply_control_arg(&jalv, *c);
+		}
 	}
 
 	/* Set Jack callbacks */
@@ -1172,6 +1306,33 @@ main(int argc, char** argv)
 	/* Create Jack ports and connect plugin ports to buffers */
 	for (uint32_t i = 0; i < jalv.num_ports; ++i) {
 		activate_port(&jalv, i);
+	}
+
+	////
+	if(start_midi_osc_in==1)
+	{
+		//create midi osc input port
+		port_in = jack_port_register (jalv.jack_client, "midi_osc_input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0);
+
+		if (port_in == NULL) 
+		{
+			fprintf (stderr, "\ncould not register JACK midi osc in port\n");
+			return 1;
+		}
+		else
+		{
+			printf ("\nregistered JACK midi osc in port\n");
+		}
+	}
+
+	/////
+	if(start_osc_server==1)
+	{
+		lo_st = lo_server_thread_new(default_port, NULL);
+		//match any path, any types
+       		lo_server_thread_add_method(lo_st, NULL, NULL, default_msg_handler, NULL);
+        	lo_server_thread_start(lo_st);
+		printf("\nosc server thread started\n");
 	}
 
 	/* Activate plugin */
