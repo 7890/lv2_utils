@@ -1,0 +1,17 @@
+#jalv added features
+#add client name option (-C) to jalv
+#add jack midi osc in port (needs liblo)
+
+#how to build
+
+svn co http://svn.drobilla.net/lad/trunk/jalv/
+
+#copy wscript to directory jalv/
+#copy *.c *.h files to jalv/src 
+#the modified files are based on svn r5357 | drobilla | 2014-04-06 08:14:04 +0200 (Sun, 06 Apr 2014)
+#and build
+
+./waf configure && ./waf make && sudo ./waf install
+
+jalv --help
+jalv.gtk --help
