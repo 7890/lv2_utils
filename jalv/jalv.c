@@ -455,10 +455,17 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 			{
 				path=lo_get_path(event.buffer,event.size);
 
+				if(!strcmp(path,"/quit"))
+				{
+					printf("client quit requested by osc\n");
+					zix_sem_post(jalv->done);
+					break;
+				}
+
 				//accept messages in the form /lv2control sf "symbolName" 0.0
 				if(strcmp(path,"/lv2control"))
 				{
-					break;
+					continue;
 				}
 
 				int result;
@@ -470,7 +477,7 @@ jack_process_cb(jack_nframes_t nframes, void* data)
 				if(strcmp(types,"sf"))
 				{
 					lo_message_free(msg);
-					break;
+					continue;
 				}
 
 				lo_arg **argv = lo_message_get_argv(msg);
