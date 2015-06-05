@@ -26,6 +26,8 @@
 
 #include "jalv_internal.h"
 
+static GtkCheckMenuItem* active_preset_item = NULL;
+
 typedef struct {
 	Jalv*     jalv;
 	LilvNode* property;
@@ -101,9 +103,11 @@ jalv_init(int* argc, char*** argv, JalvOptions* opts)
 		{ "jack-client-name", 'C', 0, G_OPTION_ARG_STRING, &opts->preferred_jack_client_name,
 		  "JACK client name", "name" },
 		{ "update-frequency", 'r', 0, G_OPTION_ARG_DOUBLE, &opts->update_rate,
-		  "UI update frequency", NULL},		
+		  "UI update frequency", NULL},
 		{ "control", 'c', 0, G_OPTION_ARG_STRING_ARRAY, &opts->controls,
-		  "Set initial control values (-c symbol=val (-c symbol=val))", NULL},
+		  "Set control value (e.g. \"vol=1.4\")", NULL},
+		{ "print-controls", 'p', 0, G_OPTION_ARG_NONE, &opts->print_controls,
+		  "Print control output changes to stdout", NULL},
 		{ 0, 0, 0, 0, 0, 0, 0 } };
 	GError* error = NULL;
 	const int err = gtk_init_with_args(
@@ -123,7 +127,7 @@ jalv_native_ui_type(Jalv* jalv)
 {
 #if GTK_MAJOR_VERSION == 2
 	return "http://lv2plug.in/ns/extensions/ui#GtkUI";
-#elif GTK_MAJOR_VERSION == 3 
+#elif GTK_MAJOR_VERSION == 3
 	return "http://lv2plug.in/ns/extensions/ui#Gtk3UI";
 #else
 	return NULL;
@@ -138,8 +142,8 @@ on_save_activate(GtkWidget* widget, void* ptr)
 		"Save State",
 		(GtkWindow*)jalv->window,
 		GTK_FILE_CHOOSER_ACTION_CREATE_FOLDER,
-		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-		GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
+		"_Cancel", GTK_RESPONSE_CANCEL,
+		"_Save", GTK_RESPONSE_ACCEPT,
 		NULL);
 
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
@@ -183,8 +187,16 @@ symbolify(const char* in)
 static void
 on_preset_activate(GtkWidget* widget, gpointer data)
 {
-	PresetRecord* record = (PresetRecord*)data;
-	jalv_apply_preset(record->jalv, record->preset);
+	if (GTK_CHECK_MENU_ITEM(widget) != active_preset_item) {
+		PresetRecord* record = (PresetRecord*)data;
+		jalv_apply_preset(record->jalv, record->preset);
+		if (active_preset_item) {
+			gtk_check_menu_item_set_active(active_preset_item, FALSE);
+		}
+
+		active_preset_item = GTK_CHECK_MENU_ITEM(widget);
+		gtk_check_menu_item_set_active(active_preset_item, TRUE);
+	}
 }
 
 static void
@@ -195,15 +207,91 @@ on_preset_destroy(gpointer data, GClosure* closure)
 	free(record);
 }
 
+typedef struct {
+	GtkMenuItem* item;
+	char*        label;
+	GtkMenu*     menu;
+	GSequence*   banks;
+} PresetMenu;
+
+static PresetMenu*
+pset_menu_new(const char* label)
+{
+	PresetMenu* menu = (PresetMenu*)malloc(sizeof(PresetMenu));
+	menu->label = g_strdup(label);
+	menu->item  = GTK_MENU_ITEM(gtk_menu_item_new_with_label(menu->label));
+	menu->menu  = GTK_MENU(gtk_menu_new());
+	menu->banks = NULL;
+	return menu;
+}
+
+static void
+pset_menu_free(PresetMenu* menu)
+{
+	if (menu->banks) {
+		for (GSequenceIter* i = g_sequence_get_begin_iter(menu->banks);
+		     !g_sequence_iter_is_end(i);
+		     i = g_sequence_iter_next(i)) {
+			PresetMenu* bank_menu = (PresetMenu*)g_sequence_get(i);
+			pset_menu_free(bank_menu);
+		}
+		g_sequence_free(menu->banks);
+	}
+
+	free(menu->label);
+	free(menu);
+}
+
+static gint
+menu_cmp(gconstpointer a, gconstpointer b, gpointer data)
+{
+	return strcmp(((PresetMenu*)a)->label, ((PresetMenu*)b)->label);
+}
+
+static PresetMenu*
+get_bank_menu(Jalv* jalv, PresetMenu* menu, const LilvNode* bank)
+{
+	LilvNode* label = lilv_world_get(
+		jalv->world, bank, jalv->nodes.rdfs_label, NULL);
+
+	const char*    uri = lilv_node_as_string(bank);
+	const char*    str = label ? lilv_node_as_string(label) : uri;
+	PresetMenu     key = { NULL, (char*)str, NULL, NULL };
+	GSequenceIter* i   = g_sequence_lookup(menu->banks, &key, menu_cmp, NULL);
+	if (!i) {
+		PresetMenu* bank_menu = pset_menu_new(str);
+		gtk_menu_item_set_submenu(bank_menu->item, GTK_WIDGET(bank_menu->menu));
+		g_sequence_insert_sorted(menu->banks, bank_menu, menu_cmp, NULL);
+		return bank_menu;
+	}
+	return g_sequence_get(i);
+}
+
 static int
 add_preset_to_menu(Jalv*           jalv,
                    const LilvNode* node,
                    const LilvNode* title,
                    void*           data)
 {
-	GtkWidget*  presets_menu = GTK_WIDGET(data);
-	const char* label        = lilv_node_as_string(title);
-	GtkWidget*  item         = gtk_menu_item_new_with_label(label);
+	PresetMenu* menu  = (PresetMenu*)data;
+	const char* label = lilv_node_as_string(title);
+	GtkWidget*  item  = gtk_check_menu_item_new_with_label(label);
+	gtk_check_menu_item_set_draw_as_radio(GTK_CHECK_MENU_ITEM(item), TRUE);
+	if (jalv->preset &&
+	    lilv_node_equals(lilv_state_get_uri(jalv->preset), node)) {
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+		active_preset_item = GTK_CHECK_MENU_ITEM(item);
+	}
+
+	LilvNode* bank = lilv_world_get(
+		jalv->world, node, jalv->nodes.pset_bank, NULL);
+
+	if (bank) {
+		PresetMenu* bank_menu = get_bank_menu(jalv, menu, bank);
+		gtk_menu_shell_append(GTK_MENU_SHELL(bank_menu->menu), item);
+	} else {
+		gtk_menu_shell_append(GTK_MENU_SHELL(menu->menu), item);
+	}
 
 	PresetRecord* record = (PresetRecord*)malloc(sizeof(PresetRecord));
 	record->jalv   = jalv;
@@ -214,8 +302,42 @@ add_preset_to_menu(Jalv*           jalv,
 	                      record, on_preset_destroy,
 	                      0);
 
-	gtk_menu_shell_append(GTK_MENU_SHELL(presets_menu), item);
+	//gtk_menu_shell_append(GTK_MENU_SHELL(presets_menu), item);
 	return 0;
+}
+
+static void
+finish_menu(PresetMenu* menu)
+{
+	for (GSequenceIter* i = g_sequence_get_begin_iter(menu->banks);
+	     !g_sequence_iter_is_end(i);
+	     i = g_sequence_iter_next(i)) {
+		PresetMenu* bank_menu = (PresetMenu*)g_sequence_get(i);
+		gtk_menu_shell_append(GTK_MENU_SHELL(menu->menu),
+		                      GTK_WIDGET(bank_menu->item));
+	}
+	g_sequence_free(menu->banks);
+}
+
+static void
+rebuild_preset_menu(Jalv* jalv, GtkContainer* pset_menu)
+{
+	// Clear current menu
+	active_preset_item = NULL;
+	for (GList* items = g_list_nth(gtk_container_get_children(pset_menu), 3);
+	     items;
+	     items = items->next) {
+		gtk_container_remove(pset_menu, items->data);
+	}
+
+	// Load presets and build new menu
+	PresetMenu menu = {
+		NULL, NULL, GTK_MENU(pset_menu),
+		g_sequence_new((GDestroyNotify)pset_menu_free)
+	};
+	jalv_load_presets(jalv, add_preset_to_menu, &menu);
+	finish_menu(&menu);
+	gtk_widget_show_all(GTK_WIDGET(pset_menu));
 }
 
 static void
@@ -227,54 +349,61 @@ on_save_preset_activate(GtkWidget* widget, void* ptr)
 		"Save Preset",
 		(GtkWindow*)jalv->window,
 		GTK_FILE_CHOOSER_ACTION_SAVE,
-		GTK_STOCK_CANCEL, GTK_RESPONSE_REJECT,
-		GTK_STOCK_SAVE, GTK_RESPONSE_ACCEPT,
+		"_Cancel", GTK_RESPONSE_REJECT,
+		"_Save", GTK_RESPONSE_ACCEPT,
 		NULL);
 
 	char* dot_lv2 = g_build_filename(g_get_home_dir(), ".lv2", NULL);
 	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), dot_lv2);
 	free(dot_lv2);
 
-	GtkWidget* content   = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	GtkBox*    box       = GTK_BOX(new_box(true, 8));
-	GtkWidget* uri_label = gtk_label_new("URI (Optional):");
-	GtkWidget* uri_entry = gtk_entry_new();
+	GtkWidget* content    = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	GtkBox*    box        = GTK_BOX(new_box(true, 8));
+	GtkWidget* uri_label  = gtk_label_new("URI (Optional):");
+	GtkWidget* uri_entry  = gtk_entry_new();
+	GtkWidget* add_prefix = gtk_check_button_new_with_mnemonic(
+		"_Prefix plugin name");
 
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(add_prefix), TRUE);
 	gtk_box_pack_start(box, uri_label, FALSE, TRUE, 2);
 	gtk_box_pack_start(box, uri_entry, TRUE, TRUE, 2);
 	gtk_box_pack_start(GTK_BOX(content), GTK_WIDGET(box), FALSE, FALSE, 6);
+	gtk_box_pack_start(GTK_BOX(content), add_prefix, FALSE, FALSE, 6);
 
 	gtk_widget_show_all(GTK_WIDGET(dialog));
 	gtk_entry_set_activates_default(GTK_ENTRY(uri_entry), TRUE);
 	gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-		const char* path = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-		const char* uri  = gtk_entry_get_text(GTK_ENTRY(uri_entry));
+		const char* path   = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		const char* uri    = gtk_entry_get_text(GTK_ENTRY(uri_entry));
+		const char* prefix = "";
+		const char* sep    = "";
+		if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(add_prefix))) {
+			LilvNode* plug_name = lilv_plugin_get_name(jalv->plugin);
+			prefix = lilv_node_as_string(plug_name);
+			sep    = "_";
+			lilv_node_free(plug_name);
+		}
 
 		char* dirname  = g_path_get_dirname(path);
 		char* basename = g_path_get_basename(path);
 		char* sym      = symbolify(basename);
-		char* bundle   = g_strjoin(NULL, sym, ".lv2/", NULL);
+		char* sprefix  = symbolify(prefix);
+		char* bundle   = g_strjoin(NULL, sprefix, sep, sym, ".preset.lv2/", NULL);
 		char* file     = g_strjoin(NULL, sym, ".ttl", NULL);
 		char* dir      = g_build_filename(dirname, bundle, NULL);
 
 		jalv_save_preset(jalv, dir, (strlen(uri) ? uri : NULL), basename, file);
 
-		// Load preset so it is now known to LilvWorld
-		SerdNode  sdir = serd_node_new_file_uri((const uint8_t*)dir, 0, 0, 0);
-		LilvNode* ldir = lilv_new_uri(jalv->world, (const char*)sdir.buf);
+		// Reload bundle into the world
+		LilvNode* ldir = lilv_new_file_uri(jalv->world, NULL, dir);
+		lilv_world_unload_bundle(jalv->world, ldir);
 		lilv_world_load_bundle(jalv->world, ldir);
-		serd_node_free(&sdir);
+		//serd_node_free(&sdir);
 		lilv_node_free(ldir);
 
 		// Rebuild preset menu
-		GtkContainer* pset_menu = GTK_CONTAINER(gtk_widget_get_parent(widget));
-		GList*        items     = gtk_container_get_children(pset_menu);
-		for (items = items->next; items; items = items->next) {
-			gtk_container_remove(pset_menu, items->data);
-		}
-		jalv_load_presets(jalv, add_preset_to_menu, pset_menu);
-		gtk_widget_show_all(GTK_WIDGET(pset_menu));
+		rebuild_preset_menu(jalv, GTK_CONTAINER(gtk_widget_get_parent(widget)));
 
 		g_free(dir);
 		g_free(file);
@@ -285,6 +414,40 @@ on_save_preset_activate(GtkWidget* widget, void* ptr)
 	}
 
 	gtk_widget_destroy(GTK_WIDGET(dialog));
+}
+
+static void
+on_delete_preset_activate(GtkWidget* widget, void* ptr)
+{
+	Jalv* jalv = (Jalv*)ptr;
+	if (!jalv->preset) {
+		return;
+	}
+
+	GtkWidget* dialog = gtk_dialog_new_with_buttons(
+		"Delete Preset?",
+		(GtkWindow*)jalv->window,
+		GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+		"_Cancel", GTK_RESPONSE_REJECT,
+		"_OK", GTK_RESPONSE_ACCEPT,
+		NULL);
+
+	char* msg = g_strdup_printf("Delete preset \"%s\" from the file system?",
+	                            lilv_state_get_label(jalv->preset));
+
+	GtkWidget* content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	GtkWidget* text    = gtk_label_new(msg);
+	gtk_box_pack_start(GTK_BOX(content), text, TRUE, TRUE, 4);
+
+	gtk_widget_show_all(dialog);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		jalv_delete_current_preset(jalv);
+		rebuild_preset_menu(jalv, GTK_CONTAINER(gtk_widget_get_parent(widget)));
+	}
+
+	g_free(msg);
+	gtk_widget_destroy(text);
+	gtk_widget_destroy(dialog);
 }
 
 void
@@ -324,7 +487,7 @@ jalv_ui_port_event(Jalv*       jalv,
 		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget),
 		                             *(const float*)buffer > 0.0f);
 	} else if (GTK_IS_RANGE(widget)) {
-		gtk_range_set_value(GTK_RANGE(widget), *(const float*)buffer); 
+		gtk_range_set_value(GTK_RANGE(widget), *(const float*)buffer);
 	} else {
 		fprintf(stderr, "Unknown widget type for port %d\n", port_index);
 	}
@@ -603,14 +766,14 @@ add_control_row(GtkWidget*  table,
 static int
 port_group_cmp(const void* p1, const void* p2, void* data)
 {
-	Jalv*              jalv  = (Jalv*)data;
-	const struct Port* port1 = (const struct Port*)p1;
-	const struct Port* port2 = (const struct Port*)p2;
+	Jalv*           jalv  = (Jalv*)data;
+	const LilvPort* port1 = *(const LilvPort**)p1;
+	const LilvPort* port2 = *(const LilvPort**)p2;
 
 	LilvNode* group1 = lilv_port_get(
-		jalv->plugin, port1->lilv_port, jalv->nodes.pg_group);
+		jalv->plugin, port1, jalv->nodes.pg_group);
 	LilvNode* group2 = lilv_port_get(
-		jalv->plugin, port2->lilv_port, jalv->nodes.pg_group);
+		jalv->plugin, port2, jalv->nodes.pg_group);
 
 	const int cmp = (group1 && group2)
 		? strcmp(lilv_node_as_string(group1), lilv_node_as_string(group2))
@@ -644,10 +807,10 @@ build_control_widget(Jalv* jalv, GtkWidget* window)
 	lilv_plugin_get_port_ranges_float(plugin, mins, maxs, NULL);
 
 	/* Make an array of control port pointers and sort it by group */
-	GArray* control_ports = g_array_new(FALSE, TRUE, sizeof(struct Port*));
+	GArray* control_ports = g_array_new(FALSE, TRUE, sizeof(LilvPort*));
 	for (unsigned i = 0; i < jalv->num_ports; ++i) {
 		if (jalv->ports[i].type == TYPE_CONTROL) {
-			g_array_append_vals(control_ports, &jalv->ports[i], 1);
+			g_array_append_vals(control_ports, &jalv->ports[i].lilv_port, 1);
 		}
 	}
 	g_array_sort_with_data(control_ports, port_group_cmp, jalv);
@@ -656,16 +819,14 @@ build_control_widget(Jalv* jalv, GtkWidget* window)
 	LilvNode* last_group = NULL;
 	int       n_rows     = 0;
 	for (unsigned i = 0; i < control_ports->len; ++i) {
-		const LilvPort* port  = g_array_index(control_ports, LilvPort*, i);
-
+		const LilvPort* port = g_array_index(control_ports, LilvPort*, i);
 		if (!jalv->opts.show_hidden &&
 		    lilv_port_has_property(plugin, port, pprop_notOnGUI)) {
 			continue;
 		}
 
-		uint32_t        index = lilv_port_get_index(plugin, port);
-		LilvNode*       name  = lilv_port_get_name(plugin, port);
-
+		uint32_t  index = lilv_port_get_index(plugin, port);
+		LilvNode* name  = lilv_port_get_name(plugin, port);
 		LilvNode* group = lilv_port_get(plugin, port, jalv->nodes.pg_group);
 		if (group && !lilv_node_equals(group, last_group)) {
 			/* Group has changed, add a heading row here */
@@ -800,17 +961,25 @@ build_menu(Jalv* jalv, GtkWidget* window, GtkWidget* vbox)
 	gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file);
 
-	GtkWidget* presets      = gtk_menu_item_new_with_mnemonic("_Presets");
-	GtkWidget* presets_menu = gtk_menu_new();
-	GtkWidget* save_preset  = gtk_menu_item_new_with_mnemonic(
+	GtkWidget* pset_item   = gtk_menu_item_new_with_mnemonic("_Presets");
+	GtkWidget* pset_menu   = gtk_menu_new();
+	GtkWidget* save_preset = gtk_menu_item_new_with_mnemonic(
 		"_Save Preset...");
-	gtk_menu_item_set_submenu(GTK_MENU_ITEM(presets), presets_menu);
-	gtk_menu_shell_append(GTK_MENU_SHELL(presets_menu), save_preset);
-	gtk_menu_shell_append(GTK_MENU_SHELL(presets_menu),
+	GtkWidget* delete_preset = gtk_menu_item_new_with_mnemonic(
+		"_Delete Current Preset...");
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(pset_item), pset_menu);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pset_menu), save_preset);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pset_menu), delete_preset);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pset_menu),
 	                      gtk_separator_menu_item_new());
-	gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), presets);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), pset_item);
 
-	jalv_load_presets(jalv, add_preset_to_menu, presets_menu);
+	PresetMenu menu = {
+		NULL, NULL, GTK_MENU(pset_menu),
+		g_sequence_new((GDestroyNotify)pset_menu_free)
+	};
+	jalv_load_presets(jalv, add_preset_to_menu, &menu);
+	finish_menu(&menu);
 
 	g_signal_connect(G_OBJECT(quit), "activate",
 	                 G_CALLBACK(on_quit_activate), window);
@@ -820,6 +989,9 @@ build_menu(Jalv* jalv, GtkWidget* window, GtkWidget* vbox)
 
 	g_signal_connect(G_OBJECT(save_preset), "activate",
 	                 G_CALLBACK(on_save_preset_activate), jalv);
+
+	g_signal_connect(G_OBJECT(delete_preset), "activate",
+	                 G_CALLBACK(on_delete_preset_activate), jalv);
 
 	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
 }
@@ -885,8 +1057,7 @@ jalv_open_ui(Jalv* jalv)
 			box_size.height + controls_size.height);
 	}
 
-	g_timeout_add(1000 / jalv->ui_update_hz,
-	              (GSourceFunc)jalv_emit_ui_events, jalv);
+	g_timeout_add(1000 / jalv->ui_update_hz, (GSourceFunc)jalv_update, jalv);
 
 	gtk_window_present(GTK_WINDOW(window));
 

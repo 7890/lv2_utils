@@ -14,7 +14,7 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-//tb/131104
+//tb/131104/150520
 //add preferred jack client name to options
 
 #ifndef JALV_INTERNAL_H
@@ -88,15 +88,17 @@ typedef struct {
 } ControlChange;
 
 typedef struct {
-	char*    uuid;         ///< Session UUID
-	char*    load;         ///< Path for state to load
-	char**   controls;     ///< Control values
-	uint32_t buffer_size;  ///< Plugin<=>UI communication buffer size
-	double   update_rate;  ///< UI update rate in Hz
-	int      dump;         ///< Dump communication iff true
-	int      generic_ui;   ///< Use generic UI iff true
-	int      show_hidden;  ///< Show controls for notOnGUI ports
-	int      no_menu;      ///< Hide menu iff true
+	char*    uuid;              ///< Session UUID
+	char*    load;              ///< Path for state to load
+	char**   controls;          ///< Control values
+	uint32_t buffer_size;       ///< Plugin <= >UI communication buffer size
+	double   update_rate;       ///< UI update rate in Hz
+	int      dump;              ///< Dump communication iff true
+	int      generic_ui;        ///< Use generic UI iff true
+	int      show_hidden;       ///< Show controls for notOnGUI ports
+	int      no_menu;           ///< Hide menu iff true
+	int      show_ui;           ///< Show non-embedded UI
+	int      print_controls;    ///< Print control changes to stdout
 	char*	 preferred_jack_client_name;
 } JalvOptions;
 
@@ -136,9 +138,11 @@ typedef struct {
 	LilvNode* lv2_connectionOptional;
 	LilvNode* lv2_control;
 	LilvNode* lv2_name;
+	LilvNode* lv2_reportsLatency;
 	LilvNode* midi_MidiEvent;
 	LilvNode* pg_group;
 	LilvNode* pset_Preset;
+	LilvNode* pset_bank;
 	LilvNode* rdfs_label;
 	LilvNode* rsz_minimumSize;
 	LilvNode* work_interface;
@@ -185,6 +189,7 @@ typedef struct {
 	char*              temp_dir;       ///< Temporary plugin state directory
 	char*              save_dir;       ///< Plugin save directory
 	const LilvPlugin*  plugin;         ///< Plugin class (RDF data)
+	LilvState*         preset;         ///< Current preset
 	LilvUIs*           uis;            ///< All plugin UIs (RDF data)
 	const LilvUI*      ui;             ///< Plugin UI (RDF data)
 	const LilvNode*    ui_type;        ///< Plugin UI type (unwrapped)
@@ -198,6 +203,7 @@ typedef struct {
 	uint32_t           control_in;     ///< Index of control input port
 	uint32_t           num_ports;      ///< Size of the two following arrays:
 	uint32_t           longest_sym;    ///< Longest port symbol
+	uint32_t           plugin_latency; ///< Latency reported by plugin (if any)
 	float              ui_update_hz;   ///< Frequency of UI updates
 	jack_nframes_t     sample_rate;    ///< Sample rate
 	jack_nframes_t     event_delta_t;  ///< Frames since last update sent to UI
@@ -256,6 +262,10 @@ jalv_ui_port_event(Jalv*       jalv,
 bool
 jalv_emit_ui_events(Jalv* jalv);
 
+////////////
+bool
+jalv_update(Jalv* jalv);
+
 int
 jalv_ui_resize(Jalv* jalv, int width, int height);
 
@@ -268,7 +278,13 @@ int
 jalv_load_presets(Jalv* jalv, PresetSink sink, void* data);
 
 int
+jalv_unload_presets(Jalv* jalv);
+
+int
 jalv_apply_preset(Jalv* jalv, const LilvNode* preset);
+
+int
+jalv_delete_current_preset(Jalv* jalv);
 
 int
 jalv_save_preset(Jalv*       jalv,

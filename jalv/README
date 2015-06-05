@@ -4,8 +4,8 @@
 
 #how to build
 
-#the modified files are based on svn r5357 | drobilla | 2014-04-06 08:14:04 +0200 (Sun, 06 Apr 2014)
-svn co -r5357 http://svn.drobilla.net/lad/trunk/jalv/
+#the modified files are based on svn r5675 | drobilla | 2014-04-06 08:14:04 +0200 (Sun, 06 Apr 2014)
+svn co -r5675 http://svn.drobilla.net/lad/trunk/jalv/
 
 #cp wscript jalv/
 #cp *.c *.h jalv/src

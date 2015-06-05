@@ -14,12 +14,17 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include <string.h>
+#define _XOPEN_SOURCE 500
+
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "jalv_config.h"
 #include "jalv_internal.h"
+
+#include "lv2/lv2plug.in/ns/extensions/ui/ui.h"
 
 //tb/131104
 //add option to set jack client name
@@ -31,11 +36,12 @@ print_usage(const char* name, bool error)
 	fprintf(os, "Usage: %s [OPTION...] PLUGIN_URI\n", name);
 	fprintf(os, "Run an LV2 plugin as a Jack application.\n");
 	fprintf(os, "  -h           Display this help and exit\n");
+	fprintf(os, "  -p           Print control output changes to stdout\n");
+	fprintf(os, "  -c SYM=VAL   Set control value (e.g. \"vol=1.4\")\n");
 	fprintf(os, "  -u UUID      UUID for Jack session restoration\n");
 	fprintf(os, "  -l DIR       Load state from save directory\n");
 	fprintf(os, "  -d DIR       Dump plugin <=> UI communication\n");
 	fprintf(os, "  -b SIZE      Buffer size for plugin <=> UI communication\n");
-	fprintf(os, "  -c SYM=VAL   set initial control values (multiple -c possible)\n");
 	fprintf(os, "  -C NAME      preferred jack client name\n");
 
 	return error ? 1 : 0;
@@ -67,6 +73,10 @@ jalv_init(int* argc, char*** argv, JalvOptions* opts)
 	for (; a < *argc && (*argv)[a][0] == '-'; ++a) {
 		if ((*argv)[a][1] == 'h') {
 			return print_usage((*argv)[0], true);
+		} else if ((*argv)[a][1] == 's') {
+			opts->show_ui = true;
+		} else if ((*argv)[a][1] == 'p') {
+			opts->print_controls = true;
 		} else if ((*argv)[a][1] == 'u') {
 			if (++a == *argc) {
 				fprintf(stderr, "Missing argument for -u\n");
@@ -117,20 +127,72 @@ jalv_native_ui_type(Jalv* jalv)
 	return NULL;
 }
 
+static void
+jalv_process_command(Jalv* jalv, const char* cmd)
+{
+	char  sym[64];
+	float value;
+	if (sscanf(cmd, "%[a-zA-Z0-9] = %f", sym, &value) == 2) {
+		struct Port* port = NULL;
+		for (uint32_t i = 0; i < jalv->num_ports; ++i) {
+			struct Port* p = &jalv->ports[i];
+			const LilvNode* s = lilv_port_get_symbol(jalv->plugin, p->lilv_port);
+			if (!strcmp(lilv_node_as_string(s), sym)) {
+				port = p;
+				break;
+			}
+		}
+		if (port) {
+			port->control = value;
+			printf("%-*s = %f\n", jalv->longest_sym, sym, value);
+		} else {
+			fprintf(stderr, "error: no port `%s'\n", sym);
+		}
+	}
+}
+
 int
 jalv_open_ui(Jalv* jalv)
 {
-#ifdef JALV_JACK_SESSION
-	printf("\nPress Ctrl-C to quit: ");
-	fflush(stdout);
-#else
-	printf("\nPress enter to quit: ");
-	fflush(stdout);
-	getc(stdin);
-	zix_sem_post(jalv->done);
-#endif
-	printf("\n");
+	const LV2UI_Idle_Interface* idle_iface = NULL;
+	const LV2UI_Show_Interface* show_iface = NULL;
+	if (jalv->ui && jalv->opts.show_ui) {
+		jalv_ui_instantiate(jalv, jalv_native_ui_type(jalv), NULL);
+		idle_iface = (const LV2UI_Idle_Interface*)
+			suil_instance_extension_data(jalv->ui_instance, LV2_UI__idleInterface);
+		show_iface = (LV2UI_Show_Interface*)
+			suil_instance_extension_data(jalv->ui_instance, LV2_UI__showInterface);
+	}
 
+	if (show_iface && idle_iface) {
+		show_iface->show(suil_instance_get_handle(jalv->ui_instance));
+
+		// Drive idle interface until interrupted
+		while (!zix_sem_try_wait(jalv->done)) {
+			if (idle_iface->idle(suil_instance_get_handle(jalv->ui_instance))) {
+				break;
+			}
+			usleep(33333);
+		}
+
+		show_iface->hide(suil_instance_get_handle(jalv->ui_instance));
+
+	} else {
+		// Primitive command prompt for setting control values
+		while (!zix_sem_try_wait(jalv->done)) {
+			char line[128];
+			printf("> ");
+			if (fgets(line, sizeof(line), stdin)) {
+				jalv_process_command(jalv, line);
+			} else {
+				break;
+			}
+		}
+	}		
+
+	// Caller waits on the done sem, so increment it again to exit
+	zix_sem_post(jalv->done);
+	
 	return 0;
 }
 
