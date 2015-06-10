@@ -47,6 +47,8 @@
 #include "lv2_evbuf.h"
 #include "symap.h"
 
+#include "lv2_external_ui.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -147,6 +149,8 @@ typedef struct {
 	LilvNode* rsz_minimumSize;
 	LilvNode* work_interface;
 	LilvNode* work_schedule;
+	LilvNode* ui_externallv;
+	LilvNode* ui_externalkx;
 	LilvNode* end;  ///< NULL terminator for easy freeing of entire structure
 } JalvNodes;
 
@@ -214,6 +218,8 @@ typedef struct {
 	bool               buf_size_set;   ///< True iff buffer size callback fired
 	bool               exit;           ///< True iff execution is finished
 	bool               has_ui;         ///< True iff a control UI is present
+	bool               externalui;     ///< True iff plugin has an external-ui
+	struct lv2_external_ui* extuiptr;  ///< data structure used for external-ui
 } Jalv;
 
 int

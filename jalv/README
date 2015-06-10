@@ -1,6 +1,7 @@
 #jalv added features
 #add client name option (-C) to jalv
 #add jack midi osc in port (needs liblo)
+#apply extui patch
 
 #how to build
 

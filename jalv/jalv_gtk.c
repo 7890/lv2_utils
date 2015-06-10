@@ -996,18 +996,29 @@ build_menu(Jalv* jalv, GtkWidget* window, GtkWidget* vbox)
 	gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
 }
 
+void
+on_external_ui_closed(void* controller)
+{
+	Jalv* jalv = (Jalv*) controller;
+	jalv_close_ui(jalv);
+}
+
 int
 jalv_open_ui(Jalv* jalv)
 {
+	struct lv2_external_ui_host extui;
 	GtkWidget* window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	jalv->window = window;
 	jalv->has_ui = TRUE;
+
+	extui.ui_closed = on_external_ui_closed;
 
 	g_signal_connect(window, "destroy",
 	                 G_CALLBACK(on_window_destroy), jalv);
 
 	LilvNode* name = lilv_plugin_get_name(jalv->plugin);
 	gtk_window_set_title(GTK_WINDOW(window), lilv_node_as_string(name));
+	extui.plugin_human_id = jalv_strdup(lilv_node_as_string(name));
 	lilv_node_free(name);
 
 	GtkWidget* vbox = new_box(false, 0);
@@ -1025,10 +1036,16 @@ jalv_open_ui(Jalv* jalv)
 
 	/* Attempt to instantiate custom UI if necessary */
 	if (jalv->ui && !jalv->opts.generic_ui) {
-		jalv_ui_instantiate(jalv, jalv_native_ui_type(jalv), alignment);
+		if (jalv->externalui) {
+			jalv_ui_instantiate(jalv, "http://lv2plug.in/ns/extensions/ui#" "external", &extui);
+		} else {
+			jalv_ui_instantiate(jalv, jalv_native_ui_type(jalv), alignment);
+		}
 	}
 
-	if (jalv->ui_instance) {
+	if (jalv->externalui && jalv->extuiptr) {
+		LV2_EXTERNAL_UI_SHOW(jalv->extuiptr);
+	} else if (jalv->ui_instance) {
 		GtkWidget* widget = (GtkWidget*)suil_instance_get_widget(
 			jalv->ui_instance);
 
@@ -1036,6 +1053,7 @@ jalv_open_ui(Jalv* jalv)
 		gtk_window_set_resizable(GTK_WINDOW(window), jalv_ui_is_resizable(jalv));
 		gtk_widget_show_all(vbox);
 		gtk_widget_grab_focus(widget);
+		gtk_window_present(GTK_WINDOW(window));
 	} else {
 		GtkWidget* controls   = build_control_widget(jalv, window);
 		GtkWidget* scroll_win = gtk_scrolled_window_new(NULL, NULL);
@@ -1055,11 +1073,11 @@ jalv_open_ui(Jalv* jalv)
 			GTK_WINDOW(window),
 			MAX(MAX(box_size.width, controls_size.width) + 24, 640),
 			box_size.height + controls_size.height);
+
+			gtk_window_present(GTK_WINDOW(window));
 	}
 
 	g_timeout_add(1000 / jalv->ui_update_hz, (GSourceFunc)jalv_update, jalv);
-
-	gtk_window_present(GTK_WINDOW(window));
 
 	gtk_main();
 	zix_sem_post(jalv->done);
